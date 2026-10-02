@@ -196,6 +196,7 @@ class _PlayerScreenState extends State<PlayerScreen>
             _player,
             configuration: VideoControllerConfiguration(
               enableHardwareAcceleration: !Platform.isIOS,
+              androidAttachSurfaceAfterVideoParameters: Platform.isAndroid,
             ),
           )
         : null;
@@ -677,8 +678,7 @@ class _PlayerScreenState extends State<PlayerScreen>
     final duration = state.duration.inMilliseconds;
     final position = state.position.inMilliseconds;
     if (duration <= 0 ||
-        position < 2000 ||
-        (position < duration ~/ 2 && duration - position > 45000) ||
+        position < 5000 ||
         state.buffer.inMilliseconds - position < 5000) {
       return;
     }

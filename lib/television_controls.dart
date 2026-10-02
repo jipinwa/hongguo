@@ -186,7 +186,16 @@ class _TelevisionControlsState extends State<TelevisionControls> {
     final key = event.logicalKey;
     _scheduleHide();
     if (key == LogicalKeyboardKey.escape || key == LogicalKeyboardKey.goBack) {
-      if (event is KeyDownEvent) widget.onBack();
+      if (event is KeyDownEvent) {
+        if (_progress.hasFocus) {
+          _focus(_surface);
+        } else if (_visible) {
+          _hideTimer?.cancel();
+          setState(() => _visible = false);
+        } else {
+          widget.onBack();
+        }
+      }
     } else if (key == LogicalKeyboardKey.mediaPlayPause ||
         key == LogicalKeyboardKey.space) {
       if (event is KeyDownEvent) {
