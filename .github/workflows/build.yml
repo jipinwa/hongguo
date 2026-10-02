@@ -92,6 +92,7 @@ jobs:
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          ANDROID_KEYSTORE_TYPE: ${{ secrets.ANDROID_KEYSTORE_TYPE }}
       - run: python scripts/build_android.py --abi arm64-v8a ${{ matrix.arguments }}
       - name: Remove signing files
         if: always()
@@ -118,5 +119,5 @@ jobs:
           TAG="v$VERSION"
           gh release create "$TAG" dist/android/* \
             --title "真果鉴/红果鉴 $TAG 预览版（arm64-v8a）" \
-            --notes "Android arm64-v8a 预览 APK（debug 签名），支持 Android 6.0+。安装时可能提示未知来源。" \
+            --notes "Android arm64-v8a APK，支持 Android 6.0+（配置签名 Secrets 时为正式签名，否则为 debug 预览）。安装时可能提示未知来源。" \
             || gh release upload "$TAG" dist/android/* --clobber

@@ -47,6 +47,7 @@ android {
                 storePassword = requireNotNull(releaseProperties.getProperty("storePassword"))
                 keyAlias = requireNotNull(releaseProperties.getProperty("keyAlias"))
                 keyPassword = requireNotNull(releaseProperties.getProperty("keyPassword"))
+                releaseProperties.getProperty("storeType")?.let { storeType = it }
             }
         }
     }

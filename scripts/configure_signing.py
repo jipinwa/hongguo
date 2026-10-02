@@ -21,7 +21,8 @@ if options.clean:
 names = ['ANDROID_KEYSTORE_BASE64', 'ANDROID_KEYSTORE_PASSWORD',
          'ANDROID_KEY_ALIAS', 'ANDROID_KEY_PASSWORD']
 values = [os.environ.get(name, '') for name in names]
-if not any(values):
+store_type = os.environ.get('ANDROID_KEYSTORE_TYPE', '')
+if not any(values + [store_type]):
     print('未配置签名 Secrets：生成预览 APK；正式发布请配置固定签名。')
     raise SystemExit(0)
 if not all(values):
@@ -57,6 +58,8 @@ def escape(value):
 
 properties = {'storeFile': key_file.as_posix(), 'storePassword': values[1],
               'keyAlias': values[2], 'keyPassword': values[3]}
+if store_type:
+    properties['storeType'] = store_type
 properties_file.write_text(''.join(name + '=' + escape(value) + '\n'
                                 for name, value in properties.items()), encoding='ascii')
 properties_file.chmod(0o600)
