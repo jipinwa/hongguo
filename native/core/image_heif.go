@@ -217,7 +217,7 @@ func heifItemProperties(data []byte, itemID uint64) ([]byte, []string, uint64, u
 				continue
 			}
 			if index > uint64(len(properties)) {
-				return nil, nil, errors.New("HEIC 属性索引越界")
+				return nil, nil, 0, 0, errors.New("HEIC 属性索引越界")
 			}
 			property := properties[index-1]
 			switch property.kind {
@@ -225,13 +225,13 @@ func heifItemProperties(data []byte, itemID uint64) ([]byte, []string, uint64, u
 				config = property.data
 			case "ispe":
 				if len(property.data) != 12 {
-					return nil, nil, errors.New("HEIC 图片尺寸无效")
+					return nil, nil, 0, 0, errors.New("HEIC 图片尺寸无效")
 				}
 				width = uint64(binary.BigEndian.Uint32(property.data[4:]))
 				height = uint64(binary.BigEndian.Uint32(property.data[8:]))
 			case "irot", "imir":
 				if len(property.data) != 1 {
-					return nil, nil, errors.New("HEIC 图片方向无效")
+					return nil, nil, 0, 0, errors.New("HEIC 图片方向无效")
 				}
 				if property.kind == "imir" {
 					if property.data[0]&1 == 0 {

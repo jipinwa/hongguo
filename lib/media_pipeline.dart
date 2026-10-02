@@ -4,7 +4,6 @@ import 'dart:math';
 import 'package:flutter/services.dart';
 
 import 'core_bridge.dart';
-import 'models.dart';
 import 'app_build.dart';
 
 class MediaProbe {
@@ -329,7 +328,7 @@ class FFmpegExecutor implements MediaExecutor {
       try {
         await _channel.invokeMethod<void>('ffmpegCancel', {'id': jobId});
       } on PlatformException {
-        // 任务已结束时取消无效，忽略
+        // 任务已结束时取消无效
       }
     }
   }

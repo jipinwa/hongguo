@@ -8,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'core_bridge.dart';
 import 'local_store.dart';
 import 'media_library.dart';
+import 'app_build.dart';
 
 @pragma('vm:entry-point')
 void downloadServiceEntry() {
