@@ -66,7 +66,7 @@ Flutter 独立短剧应用，支持 Android 手机和 Android TV。站源请求�
 
 | 平台 | 状态 |
 | --- | --- |
-| Android 6.0+ 手机 | 源码 `0.2.58+71`；ARMv7 / ARM64 / x86_64 构建脚本与 Actions 产物可用，真实安装与运行待验收；浏览、搜索、在线播放支持安卓 6（minSdk 23），FFmpeg 插件源码内嵌于 `packages/` 并降至 minSdk 23，本地媒体处理（合并、封面解析）在安卓 6 可尝试启用，真机待验证 |
+| Android 6.0+ 手机 | 源码 `0.2.58+72`；构建脚本与 Actions 产物可用（CI 仅编 arm64-v8a），真实安装与运行待验收；浏览、搜索、在线播放支持安卓 6（minSdk 23），FFmpeg 插件源码内嵌于 `packages/` 并降至 minSdk 23，本地媒体处理（合并、封面解析）在安卓 6 可尝试启用，真机待验证 |
 | macOS 12+ | 按 2026-10-02 要求停止编译；平台源码保留，不提供安装包与 Actions 产物 |
 | Android TV | 与手机共用 Android 源码；遥控与电视布局待实机验收 |
 
@@ -78,9 +78,9 @@ Flutter 独立短剧应用，支持 Android 手机和 Android TV。站源请求�
 
 | 红果版 Artifact | 全站源版 Artifact | 内容 |
 | --- | --- | --- |
-| `hongguojian-android` | `zhenguojian-android` | 三种架构 APK 和 SHA256 |
+| `hongguojian-android` | `zhenguojian-android` | arm64-v8a APK 和 SHA256 |
 
-检查任务（checks）不阻断出包；暂停验证期间的 Flutter / Go 测试结果仅供参考。手动工作流 **Publish release** 从指定 run 收集产物创建 GitHub Release。
+检查任务（checks）不阻断出包；暂停验证期间的测试结果仅供参考。push 到 `main` 构建成功后自动创建 GitHub Release（tag 为 `v<版本>-<构建号>`），可直接在 Releases 页下载 APK。
 
 Android 正式发布签名在仓库 Secrets 配置：
 

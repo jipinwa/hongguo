@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: app-build-${{ github.workflow }}-${{ github.ref }}
@@ -92,7 +92,7 @@ jobs:
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
-      - run: python scripts/build_android.py ${{ matrix.arguments }}
+      - run: python scripts/build_android.py --abi arm64-v8a ${{ matrix.arguments }}
       - name: Remove signing files
         if: always()
         run: python scripts/configure_signing.py --clean
@@ -102,3 +102,14 @@ jobs:
           path: dist/android/*
           if-no-files-found: error
           retention-days: 14
+      - name: Publish to GitHub Release
+        if: github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION=$(grep -m1 '^version:' pubspec.yaml | sed 's/version: //; s/+/-/')
+          TAG="v$VERSION"
+          gh release create "$TAG" dist/android/* \
+            --title "真果鉴/红果鉴 $TAG 预览版（arm64-v8a）" \
+            --notes "Android arm64-v8a 预览 APK（debug 签名），支持 Android 6.0+。安装时可能提示未知来源。" \
+            || gh release upload "$TAG" dist/android/* --clobber
