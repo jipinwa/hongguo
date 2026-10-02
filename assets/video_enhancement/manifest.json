@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "shaders": {
+    "ravu-r2-rgb.hook": {
+      "sha256": "a8c7827ccd88605f70c127bc9df540fba792aecd21739bb4c7089f0cf0b5bd10",
+      "bytes": 56974,
+      "source": "https://github.com/bjin/mpv-prescalers/blob/b3f0a59d68f33b7162051ea5970a5169558f0ea2/ravu-r2-rgb.hook",
+      "license": "LGPL-3.0-or-later"
+    },
+    "ravu-lite-ar-r2.hook": {
+      "sha256": "cbbabe0a5544c3bd832c7a0ec949a364242643cc834c2840dd25f732a2f13634",
+      "bytes": 51704,
+      "source": "https://github.com/bjin/mpv-prescalers/blob/b3f0a59d68f33b7162051ea5970a5169558f0ea2/ravu-lite-ar-r2.hook",
+      "license": "LGPL-3.0-or-later"
+    },
+    "FSRCNNX_x2_8-0-4-1.glsl": {
+      "sha256": "e800dbc5c1c95185cc82216c597724533ff5f2880179f256eef600f03e8dc2ae",
+      "bytes": 71296,
+      "source": "https://github.com/igv/FSRCNN-TensorFlow/releases/tag/1.1",
+      "license": "LGPL-3.0-or-later"
+    },
+    "Anime4K_Upscale_Denoise_CNN_x2_S.glsl": {
+      "sha256": "1a45ad3aa20d8368399f2fd46791deed957c2fd0a4afd131cc92516827abab93",
+      "bytes": 18667,
+      "source": "https://github.com/bloc97/Anime4K/blob/7684e9586f8dcc738af08a1cdceb024cc184f426/glsl/Upscale%2BDenoise/Anime4K_Upscale_Denoise_CNN_x2_S.glsl",
+      "license": "MIT"
+    }
+  }
+}

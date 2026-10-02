@@ -1,0 +1,40 @@
+if (System.getenv('ZHENGUOJIAN_MIRROR_SESSION') == '__MIRROR_SESSION__') {
+    def prependMirrors = { repositories, boolean plugins ->
+        def mirrors = [
+            ['ZgjGoogleMirror', 'https://maven.aliyun.com/repository/google'],
+            ['ZgjCentralMirror', 'https://maven.aliyun.com/repository/central']
+        ]
+        if (plugins) {
+            mirrors.add(['ZgjPluginMirror', 'https://maven.aliyun.com/repository/gradle-plugin'])
+        }
+        mirrors.reverseEach { entry ->
+            def repository = repositories.findByName(entry[0])
+            if (repository == null) {
+                repository = repositories.maven {
+                    name = entry[0]
+                    url = entry[1]
+                }
+            }
+            repositories.remove(repository)
+            repositories.addFirst(repository)
+        }
+    }
+    def settingsRepositories = false
+    gradle.beforeSettings { settings ->
+        prependMirrors(settings.pluginManagement.repositories, true)
+        settings.pluginManagement.repositories.gradlePluginPortal()
+    }
+    gradle.settingsEvaluated { settings ->
+        settingsRepositories = settings.dependencyResolutionManagement.repositoriesMode.get() !=
+            org.gradle.api.initialization.resolve.RepositoriesMode.PREFER_PROJECT
+        if (settingsRepositories) {
+            prependMirrors(settings.dependencyResolutionManagement.repositories, false)
+        }
+    }
+    gradle.beforeProject { project ->
+        prependMirrors(project.buildscript.repositories, true)
+        if (!settingsRepositories) {
+            prependMirrors(project.repositories, false)
+        }
+    }
+}

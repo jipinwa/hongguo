@@ -1,0 +1,47 @@
+name: Publish release
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: '包含构建产物的 Actions run id'
+        required: true
+      tag:
+        description: 'Release 标签'
+        required: true
+        default: 'v0.2.58'
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          run-id: ${{ inputs.run_id }}
+          github-token: ${{ github.token }}
+          path: dist
+      - name: Collect packages
+        run: |
+          find dist -type f \( -name '*.apk' -o -name '*-macos.zip' \) -exec mv {} . \;
+          ls -la *.apk *.zip 2>/dev/null || true
+      - name: Publish to GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ inputs.tag }}
+        run: |
+          FILES=$(ls *.apk *.zip 2>/dev/null || true)
+          gh release create "$TAG" -R ${{ github.repository }} \
+            --title "真果鉴/红果鉴 $TAG 预览版（debug 签名）" \
+            --notes "Android 预览 APK（arm64-v8a 主流手机 / armeabi-v7a 旧设备 / x86_64 模拟器）、macOS 通用压缩包（未签名，首次打开需移除隔离属性）。未配置正式签名，安装时可能提示未知来源。" || true
+          if [ -n "$FILES" ]; then
+            gh release upload "$TAG" -R ${{ github.repository }} $FILES --clobber
+          else
+            echo "没有可上传的文件"
+          fi
+          ls -la

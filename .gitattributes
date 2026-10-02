@@ -1,0 +1,11 @@
+* text=auto
+*.dart text eol=lf
+*.go text eol=lf
+*.py text eol=lf
+*.yaml text eol=lf
+*.yml text eol=lf
+*.ps1 text eol=crlf
+android/gradlew text eol=lf
+*.png binary
+*.ico binary
+*.jar binary
