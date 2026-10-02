@@ -28,7 +28,7 @@ jobs:
           path: dist
       - name: Collect packages
         run: |
-          find dist -type f \( -name '*.apk' -o -name '*-macos.zip' \) -exec mv {} . \;
+          find dist -type f -name '*.apk' -exec mv {} . \;
           ls -la *.apk *.zip 2>/dev/null || true
       - name: Publish to GitHub Release
         env:
@@ -38,7 +38,7 @@ jobs:
           FILES=$(ls *.apk *.zip 2>/dev/null || true)
           gh release create "$TAG" -R ${{ github.repository }} \
             --title "真果鉴/红果鉴 $TAG 预览版（debug 签名）" \
-            --notes "Android 预览 APK（arm64-v8a 主流手机 / armeabi-v7a 旧设备 / x86_64 模拟器）、macOS 通用压缩包（未签名，首次打开需移除隔离属性）。未配置正式签名，安装时可能提示未知来源。" || true
+            --notes "Android 预览 APK（arm64-v8a 主流手机 / armeabi-v7a 旧设备 / x86_64 模拟器）。未配置正式签名，安装时可能提示未知来源。" || true
           if [ -n "$FILES" ]; then
             gh release upload "$TAG" -R ${{ github.repository }} $FILES --clobber
           else

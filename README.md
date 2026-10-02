@@ -1,9 +1,9 @@
 # 红果鉴 / 真果鉴
 
-Flutter 独立短剧应用，支持 Android 手机、Android TV 和 macOS。站源请求、解析、下载和播放均在设备上完成，不依赖旧项目、远程自建服务或第三方中转。原生核心为 Go（FFI 接入），播放器基于 media_kit / libmpv，合并与导出使用 FFmpegKit。
+Flutter 独立短剧应用，支持 Android 手机和 Android TV。站源请求、解析、下载和播放均在设备上完成，不依赖旧项目、远程自建服务或第三方中转。原生核心为 Go（FFI 接入），播放器基于 media_kit / libmpv，合并与导出使用 FFmpegKit。
 修改加入的对安卓6的支持
 
-当前源码版本：**0.2.58+68（未验证开发快照）**。按 2026-09-21 的约定，功能优先、暂停集中测试与回归；未经设备验收的能力均标注"待验证"，不作为已通过验收的版本。
+当前源码版本：**0.2.58+69（未验证开发快照）**。按 2026-09-21 的约定，功能优先、暂停集中测试与回归；未经设备验收的能力均标注"待验证"，不作为已通过验收的版本。
 
 ## 版本与编译选项
 
@@ -66,8 +66,8 @@ Flutter 独立短剧应用，支持 Android 手机、Android TV 和 macOS。站�
 
 | 平台 | 状态 |
 | --- | --- |
-| Android 6.0+ 手机 | 源码 `0.2.58+68`；ARMv7 / ARM64 / x86_64 构建脚本与 Actions 产物可用，真实安装与运行待验收；浏览、搜索、在线播放支持安卓 6（minSdk 23），本地媒体处理（合并、封面解析）依赖 FFmpeg 需要 Android 7.0+，安卓 6 上会提示不支持 |
-| macOS 12+ | ZIP 解压后运行 `hongguojian.app` / `zhenguojian.app`，Go 核心为 arm64 + x86_64 通用 dylib；未签名，首次打开需 `xattr -cr` 移除隔离属性；构建与运行待验收 |
+| Android 6.0+ 手机 | 源码 `0.2.58+69`；ARMv7 / ARM64 / x86_64 构建脚本与 Actions 产物可用，真实安装与运行待验收；浏览、搜索、在线播放支持安卓 6（minSdk 23），本地媒体处理（合并、封面解析）依赖 FFmpeg 需要 Android 7.0+，安卓 6 上会提示不支持 |
+| macOS 12+ | 按 2026-10-02 要求停止编译；平台源码保留，不提供安装包与 Actions 产物 |
 | Android TV | 与手机共用 Android 源码；遥控与电视布局待实机验收 |
 
 `INSTALL_FAILED_NO_MATCHING_ABIS` 表示 APK 与设备架构不匹配，请更换对应架构安装包。Android APK 默认压缩原生 `.so` 库，安装时由系统解压。
@@ -79,7 +79,6 @@ Flutter 独立短剧应用，支持 Android 手机、Android TV 和 macOS。站�
 | 红果版 Artifact | 全站源版 Artifact | 内容 |
 | --- | --- | --- |
 | `hongguojian-android` | `zhenguojian-android` | 三种架构 APK 和 SHA256 |
-| `hongguojian-macos` | `zhenguojian-macos` | macOS 通用 `.app` ZIP 和 SHA256，未签名 |
 
 检查任务（checks）不阻断出包；暂停验证期间的 Flutter / Go 测试结果仅供参考。手动工作流 **Publish release** 从指定 run 收集产物创建 GitHub Release。
 
@@ -96,15 +95,13 @@ Android 正式发布签名在仓库 Secrets 配置：
 
 ## 开发与构建
 
-Flutter `3.47.4`、Dart `3.12+`、Go `1.24.1+`、Python `3.10+`。Android 需要 JDK 17、SDK 36、NDK `28.2.13676358`；macOS 需要 macOS、完整 Xcode 和 CocoaPods。
+Flutter `3.47.4`、Dart `3.12+`、Go `1.24.1+`、Python `3.10+`。Android 需要 JDK 17、SDK 36、NDK `28.2.13676358`。
 
 构建脚本对子进程默认设置 `GOPROXY=https://goproxy.cn,direct`、`GOSUMDB=off`，不改全局配置；同名环境变量可覆盖。
 
 ~~~sh
 python3 scripts/build_android.py            # 红果版，可加 --abi arm64-v8a --cn-mirrors
 python3 scripts/build_android.py --all-sources
-python3 scripts/build_macos.py              # macOS，红果版（未签名 ZIP）
-python3 scripts/build_macos.py --all-sources
 ~~~
 
 国内构建可使用 `--cn-mirrors` / `-ChinaMirrors`：Flutter/pub 使用 `storage.flutter-io.cn` / `pub.flutter-io.cn`，Android 依赖优先阿里云镜像；仅作用于本次构建，结束后恢复原锁文件与临时 Gradle 配置。
@@ -113,14 +110,13 @@ python3 scripts/build_macos.py --all-sources
 
 ~~~sh
 python3 scripts/build_native.py --platform android --abi arm64-v8a
-python3 scripts/build_native.py --platform darwin
 flutter pub get --enforce-lockfile
 flutter run
 ~~~
 
 调试全站源版时给 `build_native.py` 加 `--all-sources`，并用 `flutter run --dart-define=ALL_SOURCES=true`；脚本会同步设置 Dart 常量和 Go 编译参数，应用启动时检查二者是否一致。
 
-产物在 `dist/android`、`dist/macos`，红果版以 `hongguojian-` 开头，全站源版以 `zhenguojian-` 开头，均附 SHA256SUMS。
+产物在 `dist/android`，红果版以 `hongguojian-` 开头，全站源版以 `zhenguojian-` 开头，均附 SHA256SUMS。
 
 ## 功能 TODO
 
