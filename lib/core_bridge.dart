@@ -832,10 +832,10 @@ class NativeRepository extends AppRepository {
     var count = entries.length;
     for (final entry in entries) {
       if (count <= 128 && size <= 64 * 1024 * 1024) break;
-      if (entry.path == keep) continue;
-      await entry.delete();
+      if (entry.$1.path == keep) continue;
+      await entry.$1.delete();
       count--;
-      size -= entry.size;
+      size -= entry.$2.size;
     }
   }
 
