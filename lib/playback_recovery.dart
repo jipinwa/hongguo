@@ -31,6 +31,7 @@ class PlaybackRecovery {
 
 class PlaybackHealth {
   static const stallTimeout = Duration(seconds: 20);
+  static const initialTimeout = Duration(seconds: 60);
   Duration? _position;
   DateTime? _lastProgress;
 
@@ -51,6 +52,9 @@ class PlaybackHealth {
       return false;
     }
     _lastProgress ??= now;
-    return now.difference(_lastProgress!) >= stallTimeout;
+    final limit = _position == Duration.zero
+        ? initialTimeout
+        : stallTimeout;
+    return now.difference(_lastProgress!) >= limit;
   }
 }
