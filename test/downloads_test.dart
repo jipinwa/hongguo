@@ -225,7 +225,7 @@ void main() {
     );
   }
 
-  testWidgets('mobile player moves download and follow into tabs', (
+  testWidgets('mobile player opens download and synopsis from bottom tools', (
     tester,
   ) async {
     size(tester, const Size(390, 844));
@@ -247,7 +247,7 @@ void main() {
       ),
     );
     await tick(tester);
-    expect(find.byKey(const ValueKey('player-download')), findsNothing);
+    expect(find.byKey(const ValueKey('player-download')), findsOneWidget);
     expect(find.byKey(const ValueKey('player-favorite')), findsNothing);
     expect(find.byKey(const ValueKey('player-volume')), findsNothing);
     expect(find.text('选集'), findsOneWidget);
@@ -260,6 +260,9 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byKey(const ValueKey('player-follow-status')), findsOneWidget);
     expect(find.text('加入追剧'), findsOneWidget);
+    await tester.tapAt(const Offset(195, 60));
+    await tester.pumpAndSettle();
+    expect(find.text('加入追剧'), findsNothing);
     await tester.tap(find.text('下载'));
     await tester.pumpAndSettle();
     expect(find.text('下载选集'), findsOneWidget);

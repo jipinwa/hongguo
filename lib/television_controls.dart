@@ -135,7 +135,7 @@ class _TelevisionControlsState extends State<TelevisionControls> {
   void _scheduleHide() {
     _hideTimer?.cancel();
     if (!widget.enabled || _panelOpen) return;
-    _hideTimer = Timer(const Duration(seconds: 5), () {
+    _hideTimer = Timer(const Duration(seconds: 3), () {
       if (mounted &&
           widget.enabled &&
           !_panelOpen &&
@@ -274,184 +274,202 @@ class _TelevisionControlsState extends State<TelevisionControls> {
                     ),
                   ),
                 ),
-              if (_visible && widget.enabled) ...[
-                const DecoratedBox(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [
-                        Color(0xCC000000),
-                        Colors.transparent,
-                        Color(0xEE000000),
+              AnimatedOpacity(
+                opacity: _visible && widget.enabled ? 1 : 0,
+                duration: const Duration(milliseconds: 180),
+                child: IgnorePointer(
+                  ignoring: !_visible || !widget.enabled,
+                  child: ExcludeFocus(
+                    excluding: !_visible || !widget.enabled,
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        const DecoratedBox(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [
+                                Color(0xCC000000),
+                                Colors.transparent,
+                                Color(0xEE000000),
+                              ],
+                              stops: [0, .4, 1],
+                            ),
+                          ),
+                        ),
+                        Positioned(
+                          top: 12,
+                          left: 24,
+                          right: 24,
+                          child: Row(
+                            children: [
+                              RemoteButton(
+                                key: const ValueKey('tv-player-back'),
+                                label: '返回',
+                                icon: Icons.arrow_back_rounded,
+                                onPressed: widget.onBack,
+                              ),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: Text(
+                                  widget.title,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    fontSize: 22,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Positioned(
+                          left: 28,
+                          right: 28,
+                          bottom: 18,
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              RemoteTarget(
+                                key: const ValueKey('tv-progress'),
+                                label: '播放进度，左右键快进或后退十秒',
+                                focusNode: _progress,
+                                onPressed: widget.onTogglePlayback,
+                                child: Column(
+                                  children: [
+                                    Stack(
+                                      children: [
+                                        LinearProgressIndicator(
+                                          value: duration > 0
+                                              ? (state.buffer.inMilliseconds /
+                                                        1000 /
+                                                        duration)
+                                                    .clamp(0, 1)
+                                              : 0,
+                                          minHeight: 5,
+                                          color: Colors.white38,
+                                          backgroundColor: Colors.white24,
+                                        ),
+                                        LinearProgressIndicator(
+                                          value: duration > 0
+                                              ? (position / duration).clamp(0, 1)
+                                              : 0,
+                                          minHeight: 5,
+                                          backgroundColor: Colors.transparent,
+                                        ),
+                                      ],
+                                    ),
+                                    Row(
+                                      children: [
+                                        Text(
+                                          '${formatPosition(position)} / ${formatPosition(duration)}',
+                                          style: const TextStyle(fontSize: 16),
+                                        ),
+                                        const Spacer(),
+                                        const Text(
+                                          '左右快进 · 确认暂停',
+                                          style: TextStyle(
+                                            fontSize: 14,
+                                            color: Colors.white70,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              SingleChildScrollView(
+                                scrollDirection: Axis.horizontal,
+                                child: Row(
+                                  children: [
+                                    RemoteButton(
+                                      key: const ValueKey('tv-previous'),
+                                      label: '上一集',
+                                      icon: Icons.skip_previous_rounded,
+                                      onPressed: widget.onPrevious,
+                                    ),
+                                    RemoteButton(
+                                      key: const ValueKey('tv-play-pause'),
+                                      label: state.playing ? '暂停' : '播放',
+                                      icon: state.playing
+                                          ? Icons.pause_rounded
+                                          : Icons.play_arrow_rounded,
+                                      focusNode: _play,
+                                      onPressed: () {
+                                        widget.onTogglePlayback();
+                                        _scheduleHide();
+                                      },
+                                    ),
+                                    RemoteButton(
+                                      key: const ValueKey('tv-next'),
+                                      label: '下一集',
+                                      icon: Icons.skip_next_rounded,
+                                      onPressed: widget.onNext,
+                                    ),
+                                    RemoteButton(
+                                      key: const ValueKey('tv-episodes'),
+                                      label: '选集',
+                                      icon: Icons.grid_view_rounded,
+                                      focusNode: _episodes,
+                                      onPressed: () =>
+                                          _openPanel(widget.onEpisodes, _episodes),
+                                    ),
+                                    if (widget.enhancement != null)
+                                      AnimatedBuilder(
+                                        animation: widget.enhancement!,
+                                        builder: (_, _) {
+                                          final enhancement = widget.enhancement!;
+                                          if (!enhancement.canCompare) {
+                                            return const SizedBox.shrink();
+                                          }
+                                          return RemoteButton(
+                                            key: const ValueKey(
+                                              'tv-enhancement-compare',
+                                            ),
+                                            label: enhancement.comparing
+                                                ? '恢复增强'
+                                                : '原画对比',
+                                            icon: Icons.compare_rounded,
+                                            onPressed: () {
+                                              unawaited(
+                                                enhancement.toggleCompare(),
+                                              );
+                                              _focus(_play);
+                                              _scheduleHide();
+                                            },
+                                          );
+                                        },
+                                      ),
+                                    RemoteButton(
+                                      key: const ValueKey('tv-settings'),
+                                      label: '播放设置',
+                                      icon: Icons.tune_rounded,
+                                      focusNode: _settings,
+                                      onPressed: () =>
+                                          _openPanel(widget.onSettings, _settings),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+                              const Text(
+                                '控制条隐藏后：左右快进 10 秒，上下或确认键显示控制条',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: Colors.white70,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       ],
-                      stops: [0, .4, 1],
                     ),
                   ),
                 ),
-                Positioned(
-                  top: 12,
-                  left: 24,
-                  right: 24,
-                  child: Row(
-                    children: [
-                      RemoteButton(
-                        key: const ValueKey('tv-player-back'),
-                        label: '返回',
-                        icon: Icons.arrow_back_rounded,
-                        onPressed: widget.onBack,
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Text(
-                          widget.title,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Positioned(
-                  left: 28,
-                  right: 28,
-                  bottom: 18,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      RemoteTarget(
-                        key: const ValueKey('tv-progress'),
-                        label: '播放进度，左右键快进或后退十秒',
-                        focusNode: _progress,
-                        onPressed: widget.onTogglePlayback,
-                        child: Column(
-                          children: [
-                            Stack(
-                              children: [
-                                LinearProgressIndicator(
-                                  value: duration > 0
-                                      ? (state.buffer.inMilliseconds /
-                                                1000 /
-                                                duration)
-                                            .clamp(0, 1)
-                                      : 0,
-                                  minHeight: 5,
-                                  color: Colors.white38,
-                                  backgroundColor: Colors.white24,
-                                ),
-                                LinearProgressIndicator(
-                                  value: duration > 0
-                                      ? (position / duration).clamp(0, 1)
-                                      : 0,
-                                  minHeight: 5,
-                                  backgroundColor: Colors.transparent,
-                                ),
-                              ],
-                            ),
-                            Row(
-                              children: [
-                                Text(
-                                  '${formatPosition(position)} / ${formatPosition(duration)}',
-                                  style: const TextStyle(fontSize: 16),
-                                ),
-                                const Spacer(),
-                                const Text(
-                                  '左右快进 · 确认暂停',
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    color: Colors.white70,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        child: Row(
-                          children: [
-                            RemoteButton(
-                              key: const ValueKey('tv-previous'),
-                              label: '上一集',
-                              icon: Icons.skip_previous_rounded,
-                              onPressed: widget.onPrevious,
-                            ),
-                            RemoteButton(
-                              key: const ValueKey('tv-play-pause'),
-                              label: state.playing ? '暂停' : '播放',
-                              icon: state.playing
-                                  ? Icons.pause_rounded
-                                  : Icons.play_arrow_rounded,
-                              focusNode: _play,
-                              onPressed: () {
-                                widget.onTogglePlayback();
-                                _scheduleHide();
-                              },
-                            ),
-                            RemoteButton(
-                              key: const ValueKey('tv-next'),
-                              label: '下一集',
-                              icon: Icons.skip_next_rounded,
-                              onPressed: widget.onNext,
-                            ),
-                            RemoteButton(
-                              key: const ValueKey('tv-episodes'),
-                              label: '选集',
-                              icon: Icons.grid_view_rounded,
-                              focusNode: _episodes,
-                              onPressed: () =>
-                                  _openPanel(widget.onEpisodes, _episodes),
-                            ),
-                            if (widget.enhancement != null)
-                              AnimatedBuilder(
-                                animation: widget.enhancement!,
-                                builder: (_, _) {
-                                  final enhancement = widget.enhancement!;
-                                  if (!enhancement.canCompare) {
-                                    return const SizedBox.shrink();
-                                  }
-                                  return RemoteButton(
-                                    key: const ValueKey(
-                                      'tv-enhancement-compare',
-                                    ),
-                                    label: enhancement.comparing
-                                        ? '恢复增强'
-                                        : '原画对比',
-                                    icon: Icons.compare_rounded,
-                                    onPressed: () {
-                                      unawaited(enhancement.toggleCompare());
-                                      _focus(_play);
-                                      _scheduleHide();
-                                    },
-                                  );
-                                },
-                              ),
-                            RemoteButton(
-                              key: const ValueKey('tv-settings'),
-                              label: '播放设置',
-                              icon: Icons.tune_rounded,
-                              focusNode: _settings,
-                              onPressed: () =>
-                                  _openPanel(widget.onSettings, _settings),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      const Text(
-                        '控制条隐藏后：左右快进 10 秒，上下或确认键显示控制条',
-                        style: TextStyle(fontSize: 13, color: Colors.white70),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+              ),
             ],
           ),
         ),

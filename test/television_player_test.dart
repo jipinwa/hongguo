@@ -103,7 +103,12 @@ void main() {
       expect(player.state.playing, isTrue);
       await tester.pump(const Duration(seconds: 6));
       await settle(tester);
-      expect(find.byKey(const ValueKey('tv-play-pause')), findsNothing);
+      expect(
+        tester
+            .widget<AnimatedOpacity>(find.byType(AnimatedOpacity).first)
+            .opacity,
+        0,
+      );
       await press(tester, LogicalKeyboardKey.arrowRight);
       expect(player.state.position, const Duration(seconds: 17));
       await press(tester, LogicalKeyboardKey.arrowLeft);
@@ -189,7 +194,12 @@ void main() {
         await settle(tester);
       }
       expect(find.text('重试播放'), findsOneWidget);
-      expect(find.byKey(const ValueKey('tv-play-pause')), findsNothing);
+      expect(
+        tester
+            .widget<AnimatedOpacity>(find.byType(AnimatedOpacity).first)
+            .opacity,
+        0,
+      );
       repository.broken = false;
       await press(tester, LogicalKeyboardKey.select);
       expect(find.text('重试播放'), findsNothing);

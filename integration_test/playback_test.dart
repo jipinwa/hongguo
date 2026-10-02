@@ -295,9 +295,16 @@ void main() {
           Orientation.portrait,
       'portrait',
     );
-    await tester.tap(find.byKey(const ValueKey('play-episode-3')));
+    Future<void> pickEpisode(int number) async {
+      await tester.tap(find.byKey(const ValueKey('player-episodes')));
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.tap(find.byKey(ValueKey('menu-episode-$number')));
+      await tester.pump(const Duration(milliseconds: 300));
+    }
+
+    await pickEpisode(3);
     await decoded(3);
-    await tester.tap(find.byKey(const ValueKey('play-episode-1')));
+    await pickEpisode(1);
     await decoded(1);
     await player().seek(player().state.duration - const Duration(seconds: 1));
     await decoded(2);
@@ -521,7 +528,10 @@ void main() {
         await player().setVolume(0);
         for (final number in [1, 2, 3]) {
           if (number != 1) {
-            await tester.tap(find.byKey(ValueKey('play-episode-$number')));
+            await tester.tap(find.byKey(const ValueKey('player-episodes')));
+            await tester.pump(const Duration(milliseconds: 300));
+            await tester.tap(find.byKey(ValueKey('menu-episode-$number')));
+            await tester.pump(const Duration(milliseconds: 300));
           }
           await until(
             () =>

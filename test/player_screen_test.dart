@@ -131,7 +131,10 @@ void main() {
       await tester.pump(const Duration(seconds: 1));
       await settleOperations(tester);
       expect(repository.pending, isNotNull);
-      await tester.tap(find.byKey(const ValueKey('play-episode-2')));
+      await tester.tap(find.byKey(const ValueKey('overlay-episodes')));
+      await tester.pump(const Duration(milliseconds: 300));
+      await settleOperations(tester);
+      await tester.tap(find.byKey(const ValueKey('menu-episode-2')));
       await settleOperations(tester);
       final currentURL = player.opened.last.uri;
       final late = PlaybackPlan(

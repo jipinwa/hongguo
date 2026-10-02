@@ -67,7 +67,7 @@ class PlayerScreen extends StatefulWidget {
 }
 
 class _PlayerScreenState extends State<PlayerScreen>
-    with WidgetsBindingObserver {
+    with WidgetsBindingObserver, SingleTickerProviderStateMixin {
   late final Player _player;
   late final VideoController? _video;
   late final VideoEnhancementController _enhancement;
@@ -104,6 +104,8 @@ class _PlayerScreenState extends State<PlayerScreen>
   bool _fullscreen = false;
   bool _automaticFullscreenSuppressed = false;
   bool _panelOpen = false;
+  late final AnimationController _switchController;
+  double _switchDirection = 0;
   bool _autoAdvance = true;
   bool? _systemFullscreen;
   Orientation? _lastOrientation;
@@ -163,6 +165,11 @@ class _PlayerScreenState extends State<PlayerScreen>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    _switchController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 320),
+      value: 1,
+    );
     _index = widget.initialIndex;
     _profileEpoch = widget.handoff?.profileEpoch ?? widget.store.profileEpoch;
     final preferences = widget.store.playbackPreferences;
@@ -932,6 +939,10 @@ class _PlayerScreenState extends State<PlayerScreen>
     }
     _resumePosition = position;
     _showControlsOnPlaybackReady = showControlsOnReady;
+    if (index != _index && recoveryAction == null) {
+      _switchDirection = index > _index ? 1 : -1;
+      _switchController.forward(from: 0);
+    }
     setState(() {
       _index = index;
       _loading = true;
@@ -1416,6 +1427,7 @@ class _PlayerScreenState extends State<PlayerScreen>
   @override
   void dispose() {
     _closed = true;
+    _switchController.dispose();
     final enhancementClosed = _enhancement.close();
     LanController.current?.detachPlayback(_lanIdentity);
     widget.handoff?.fail('接收端已退出播放');
@@ -1679,7 +1691,7 @@ class _PlayerScreenState extends State<PlayerScreen>
               _enhancement.setViewport(pixels, television: _television);
             }
           });
-          return Stack(
+          final Widget pane = Stack(
             key: _videoPaneKey,
             fit: StackFit.expand,
             children: [
@@ -1733,20 +1745,22 @@ class _PlayerScreenState extends State<PlayerScreen>
                 ),
               if ((_loading || _error != null) &&
                   !hideOverlayForPictureInPicture &&
-                  _showFullscreen &&
-                  !_television)
+                  !_television &&
+                  (_showFullscreen || _mobile))
                 SafeArea(
                   child: Align(
                     alignment: Alignment.topCenter,
                     child: Row(
                       children: [
-                        IconButton(
-                          tooltip: '退出全屏',
-                          onPressed: _rotate,
-                          icon: const Icon(Icons.arrow_back_rounded),
-                        ),
+                        if (_showFullscreen)
+                          IconButton(
+                            tooltip: '退出全屏',
+                            onPressed: _rotate,
+                            icon: const Icon(Icons.arrow_back_rounded),
+                          ),
                         const Spacer(),
                         TextButton(
+                          key: const ValueKey('overlay-episodes'),
                           onPressed: () =>
                               _openPanel(PlayerMenuSection.episodes),
                           child: const Text('选集'),
@@ -1785,6 +1799,29 @@ class _PlayerScreenState extends State<PlayerScreen>
                   ),
                 ),
             ],
+          );
+          return AnimatedBuilder(
+            animation: _switchController,
+            builder: (context, child) {
+              final curve = CurvedAnimation(
+                parent: _switchController,
+                curve: Curves.easeOutCubic,
+              );
+              final slide = _switchDirection == 0
+                  ? Offset.zero
+                  : Offset(0, _switchDirection * .4);
+              return SlideTransition(
+                position: Tween<Offset>(
+                  begin: slide,
+                  end: Offset.zero,
+                ).animate(curve),
+                child: FadeTransition(
+                  opacity: Tween<double>(begin: .35, end: 1).animate(curve),
+                  child: child,
+                ),
+              );
+            },
+            child: pane,
           );
         },
       ),

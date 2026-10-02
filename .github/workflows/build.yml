@@ -118,6 +118,6 @@ jobs:
           VERSION=$(grep -m1 '^version:' pubspec.yaml | sed 's/version: //; s/+/-/')
           TAG="v$VERSION"
           gh release create "$TAG" dist/android/* \
-            --title "真果鉴/红果鉴 $TAG 预览版（arm64-v8a）" \
-            --notes "Android arm64-v8a APK，支持 Android 6.0+（配置签名 Secrets 时为正式签名，否则为 debug 预览）。安装时可能提示未知来源。" \
+            --title "真果鉴/红果鉴 $TAG （arm64-v8a）" \
+            --notes "Android arm64-v8a APK，支持 Android 6.0+（安装时可能提示未知来源。" \
             || gh release upload "$TAG" dist/android/* --clobber

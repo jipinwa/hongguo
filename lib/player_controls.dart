@@ -230,7 +230,7 @@ class _PlayerControlsState extends State<PlayerControls> {
     final dragTarget = widget.interactions.dragSeekTarget;
     final dragSeeking = dragTarget != null;
     final position = dragSeeking
-        ? dragTarget!.inMilliseconds / 1000
+        ? dragTarget.inMilliseconds / 1000
         : state.position.inMilliseconds / 1000;
     final buffered = state.buffer.inMilliseconds / 1000;
     final visible =
