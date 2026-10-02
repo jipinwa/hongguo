@@ -4,6 +4,7 @@ import 'dart:math';
 import 'package:flutter/services.dart';
 
 import 'core_bridge.dart';
+import 'models.dart';
 import 'app_build.dart';
 
 class MediaProbe {
