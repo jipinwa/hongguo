@@ -5,6 +5,7 @@ import 'dart:io';
 import 'dart:isolate';
 
 import 'package:ffi/ffi.dart';
+import 'package:flutter/services.dart';
 import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
 
@@ -203,6 +204,8 @@ class NativeRepository extends AppRepository {
   final _readOwner = DateTime.now().microsecondsSinceEpoch.toString();
   int _readSequence = 0;
   final _activeReads = <String, int>{};
+  static final Map<String, Future<String>> _coverJobs = {};
+  static Future<void> _coverTail = Future.value();
 
   @override
   Future<Map<String, dynamic>> lan(
@@ -705,18 +708,135 @@ class NativeRepository extends AppRepository {
       'drama': drama.toJson(),
       'force': force,
     });
-    var file = result['path'] as String? ?? '';
-    if (result['heic'] == true) {
-      final prepared = await _call({
-        'action': 'prepareCover',
-        'drama': drama.toJson(),
-      });
-      if (prepared['heic'] != true) file = prepared['path'] as String? ?? '';
-    }
+    final file = await _coverFile(drama, result);
     if (file.isEmpty) throw AppFailure('海报暂不可用');
     _authorize(drama.source);
     if (epoch != access?.profileEpoch) throw AppFailure('用户已切换，请重新操作');
     return file;
+  }
+
+  Future<String> _coverFile(Drama drama, Map<String, dynamic> result) async {
+    final original = result['path'] as String? ?? '';
+    if (original.isEmpty || result['heic'] != true) return original;
+    final stat = await File(original).stat();
+    if (stat.type != FileSystemEntityType.file || stat.size <= 0) return '';
+    final directory = path.join(path.dirname(original), 'compatible-v1');
+    final key =
+        '${path.basenameWithoutExtension(original)}-${stat.modified.microsecondsSinceEpoch}-${stat.size}';
+    final target = File(path.join(directory, '$key.jpg'));
+    if (await _validJPEG(target)) {
+      await target.setLastModified(DateTime.now());
+      return target.path;
+    }
+    if (_coverJobs.containsKey(key)) return _coverJobs[key]!;
+    if (_coverJobs.length >= 96) throw AppFailure('海报正在处理，请稍后重试');
+    final job = _coverTail.then((_) => _convertCover(drama, original, target));
+    _coverTail = job.then<void>((_) {}, onError: (_, _) {});
+    _coverJobs[key] = job;
+    try {
+      return await job;
+    } finally {
+      if (identical(_coverJobs[key], job)) _coverJobs.remove(key);
+    }
+  }
+
+  Future<String> _convertCover(
+    Drama drama,
+    String original,
+    File target,
+  ) async {
+    final prepared = await _call({
+      'action': 'prepareCover',
+      'drama': drama.toJson(),
+    });
+    if (prepared['heic'] != true) {
+      return prepared['path'] as String? ?? original;
+    }
+    final input = prepared['input'] as String? ?? '';
+    if (input.isEmpty) throw AppFailure('海报格式转换失败，请重试');
+    final intermediate = File('${target.path}.part');
+    try {
+      await target.parent.create(recursive: true);
+      final String output;
+      try {
+        output =
+            await const MethodChannel('duanju/device').invokeMethod<String>(
+              'decodeHevcImage',
+              {
+                'input': input,
+                'output': intermediate.path,
+                'filters': prepared['filters'] as String? ?? '',
+                'maxSize': 800,
+              },
+            ) ??
+            '';
+      } on PlatformException {
+        throw AppFailure('海报转换失败，请重试');
+      } on MissingPluginException {
+        throw AppFailure('当前环境不支持海报转换');
+      }
+      if (output.isEmpty || !await _validJPEG(intermediate)) {
+        throw AppFailure('海报转换未生成有效图片');
+      }
+      if (await target.exists()) await target.delete();
+      await intermediate.rename(target.path);
+      await _pruneCovers(target.parent, target.path);
+      return target.path;
+    } finally {
+      for (final file in [File(input), intermediate]) {
+        try {
+          if (await file.exists()) await file.delete();
+        } on FileSystemException {
+          continue;
+        }
+      }
+    }
+  }
+
+  Future<bool> _validJPEG(File file) async {
+    try {
+      final length = await file.length();
+      if (length < 4 || length > 8 * 1024 * 1024) return false;
+      final handle = await file.open();
+      try {
+        final header = await handle.read(3);
+        return header.length == 3 &&
+            header[0] == 255 &&
+            header[1] == 216 &&
+            header[2] == 255;
+      } finally {
+        await handle.close();
+      }
+    } on FileSystemException {
+      return false;
+    }
+  }
+
+  Future<void> _pruneCovers(Directory directory, String keep) async {
+    final entries = <(File, FileStat)>[];
+    var size = 0;
+    await for (final entry in directory.list(followLinks: false)) {
+      if (entry is! File) continue;
+      final stat = await entry.stat();
+      if (entry.path.endsWith('.part')) {
+        if (DateTime.now().difference(stat.modified) >
+            const Duration(minutes: 1)) {
+          await entry.delete();
+        }
+      } else if (entry.path.endsWith('.jpg')) {
+        entries.add((entry, stat));
+        size += stat.size;
+      }
+    }
+    entries.sort((a, b) => a.$2.modified.compareTo(b.$2.modified));
+    var count = entries.length;
+    for (final entry in entries) {
+      if (count <= 128 && size <= 64 * 1024 * 1024) break;
+      if (entry.path == keep) continue;
+      await entry.delete();
+      count--;
+      size -= entry.size;
+    }
   }
 
   @override

@@ -15,13 +15,24 @@ import android.content.IntentFilter
 import android.content.pm.ActivityInfo
 import android.content.pm.PackageManager
 import android.content.res.Configuration
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.graphics.Matrix
 import android.graphics.Rect
+import android.graphics.YuvImage
+import android.media.Image
+import android.media.ImageFormat
+import android.media.MediaCodec
+import android.media.MediaFormat
 import android.net.ConnectivityManager
 import android.net.Uri
 import android.util.Rational
 import android.view.InputDevice
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
+import java.io.ByteArrayOutputStream
+import java.io.File
+import java.io.FileOutputStream
 
 class MainActivity : FlutterActivity() {
     private var headroomReadAt = 0L
@@ -180,10 +191,155 @@ class MainActivity : FlutterActivity() {
                                 call.argument<Int>("bottom")
                             ))
                         }
+                        "decodeHevcImage" -> {
+                            val input = call.argument<String>("input") ?: ""
+                            val output = call.argument<String>("output") ?: ""
+                            val filters = call.argument<String>("filters") ?: ""
+                            val maxSize = call.argument<Int>("maxSize") ?: 800
+                            if (input.isEmpty() || output.isEmpty()) {
+                                result.error("invalid_args", "缺少海报解码参数", null)
+                            } else {
+                                Thread {
+                                    val decoded = runCatching {
+                                        decodeHevcImage(input, output, filters, maxSize)
+                                    }.getOrNull()
+                                    runOnUiThread {
+                                        if (decoded != null) {
+                                            result.success(decoded)
+                                        } else {
+                                            result.error("decode_failed", "海报解码失败", null)
+                                        }
+                                    }
+                                }.start()
+                            }
+                        }
                         else -> result.notImplemented()
                     }
                 }
             }
+    }
+
+    private fun decodeHevcImage(
+        input: String,
+        output: String,
+        filters: String,
+        maxSize: Int
+    ): String? {
+        val data = File(input).readBytes()
+        if (data.isEmpty() || data.size > 96 * 1024 * 1024) return null
+        val codec = MediaCodec.createDecoderByType(MediaFormat.MIMETYPE_VIDEO_HEVC)
+        var frame: Bitmap? = null
+        try {
+            val format = MediaFormat.createVideoFormat(MediaFormat.MIMETYPE_VIDEO_HEVC, 1920, 1080)
+            format.setInteger(MediaFormat.KEY_MAX_INPUT_SIZE, 4 * 1024 * 1024)
+            codec.configure(format, null, null, 0)
+            codec.start()
+            val info = MediaCodec.BufferInfo()
+            var offset = 0
+            val deadline = SystemClock.elapsedRealtime() + 12000L
+            while (SystemClock.elapsedRealtime() < deadline) {
+                if (offset < data.size) {
+                    val index = codec.dequeueInputBuffer(10000L)
+                    if (index >= 0) {
+                        val buffer = codec.getInputBuffer(index)!!
+                        buffer.clear()
+                        val chunk = minOf(buffer.remaining(), data.size - offset)
+                        buffer.put(data, offset, chunk)
+                        offset += chunk
+                        codec.queueInputBuffer(
+                            index, 0, chunk, 0,
+                            if (offset >= data.size) MediaCodec.BUFFER_FLAG_END_OF_STREAM else 0
+                        )
+                    }
+                }
+                val index = codec.dequeueOutputBuffer(info, 10000L)
+                if (index >= 0) {
+                    val image = codec.getOutputImage(index)
+                    if (image != null) {
+                        val width = image.width
+                        val height = image.height
+                        val nv21 = imageToNV21(image)
+                        codec.releaseOutputBuffer(index, false)
+                        val yuv = YuvImage(nv21, ImageFormat.NV21, width, height, null)
+                        val bytes = ByteArrayOutputStream()
+                        if (yuv.compressToJpeg(Rect(0, 0, width, height), 95, bytes)) {
+                            frame = BitmapFactory.decodeByteArray(
+                                bytes.toByteArray(), 0, bytes.size()
+                            )
+                        }
+                        break
+                    }
+                    codec.releaseOutputBuffer(index, false)
+                    if ((info.flags and MediaCodec.BUFFER_FLAG_END_OF_STREAM) != 0) break
+                }
+            }
+        } finally {
+            runCatching { codec.stop() }
+            runCatching { codec.release() }
+        }
+        val source = frame ?: return null
+        val transformed = transformCover(source, filters, maxSize)
+        FileOutputStream(output).use { stream ->
+            if (!transformed.compress(Bitmap.CompressFormat.JPEG, 90, stream)) return null
+        }
+        return output
+    }
+
+    private fun imageToNV21(image: Image): ByteArray {
+        val width = image.width
+        val height = image.height
+        val planes = image.planes
+        val yPlane = planes[0]
+        val uPlane = planes[1]
+        val vPlane = planes[2]
+        val result = ByteArray(width * height * 3 / 2)
+        var pos = 0
+        val yBuffer = yPlane.buffer
+        val yRowStride = yPlane.rowStride
+        val yPixelStride = yPlane.pixelStride
+        for (row in 0 until height) {
+            val start = row * yRowStride
+            if (yPixelStride == 1) {
+                yBuffer.position(start)
+                yBuffer.get(result, pos, width)
+            } else {
+                for (col in 0 until width) {
+                    result[pos + col] = yBuffer.get(start + col * yPixelStride)
+                }
+            }
+            pos += width
+        }
+        val vBuffer = vPlane.buffer
+        val uBuffer = uPlane.buffer
+        val vRowStride = vPlane.rowStride
+        val vPixelStride = vPlane.pixelStride
+        val uRowStride = uPlane.rowStride
+        val uPixelStride = uPlane.pixelStride
+        for (row in 0 until height / 2) {
+            for (col in 0 until width / 2) {
+                result[pos++] = vBuffer.get(row * vRowStride + col * vPixelStride)
+                result[pos++] = uBuffer.get(row * uRowStride + col * uPixelStride)
+            }
+        }
+        return result
+    }
+
+    private fun transformCover(source: Bitmap, filters: String, maxSize: Int): Bitmap {
+        val matrix = Matrix()
+        for (token in filters.split(',')) {
+            when (token.trim()) {
+                "hflip" -> matrix.postScale(-1f, 1f)
+                "vflip" -> matrix.postScale(1f, -1f)
+                "transpose=clock" -> matrix.postRotate(90f)
+                "transpose=cclock" -> matrix.postRotate(-90f)
+            }
+        }
+        val longest = maxOf(source.width, source.height)
+        if (longest > maxSize) {
+            val scale = maxSize.toFloat() / longest
+            matrix.postScale(scale, scale)
+        }
+        return Bitmap.createBitmap(source, 0, 0, source.width, source.height, matrix, true)
     }
 
     private fun pictureInPictureSupported(): Boolean {
