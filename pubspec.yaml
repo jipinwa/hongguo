@@ -1,7 +1,7 @@
 name: duanju_app
 description: 独立运行的短剧应用
 publish_to: none
-version: 0.2.58+70
+version: 0.2.58+71
 
 environment:
   sdk: '>=3.12.0 <4.0.0'
@@ -32,6 +32,10 @@ dev_dependencies:
     sdk: flutter
   flutter_lints: ^6.0.0
   shared_preferences_platform_interface: ^2.4.2
+
+dependency_overrides:
+  ffmpeg_kit_flutter_new_min_gpl:
+    path: packages/ffmpeg_kit_flutter_new_min_gpl
 
 flutter:
   config:

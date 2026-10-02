@@ -9,5 +9,5 @@ bool ffmpegSessionStarted = false;
 
 bool ffmpegSupported() {
   if (!Platform.isAndroid) return true;
-  return androidSdkInt == 0 || androidSdkInt >= 24;
+  return androidSdkInt == 0 || androidSdkInt >= 23;
 }

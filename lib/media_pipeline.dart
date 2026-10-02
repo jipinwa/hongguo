@@ -241,7 +241,7 @@ abstract class MediaExecutor {
 }
 
 class FFmpegExecutor implements MediaExecutor {
-  static const _sdkGateMessage = '当前系统版本过低，本地媒体处理需要 Android 7.0 及以上。';
+  static const _sdkGateMessage = '当前系统版本过低，本地媒体处理需要 Android 6.0 及以上。';
   int? _session;
   bool _cancelled = false;
 

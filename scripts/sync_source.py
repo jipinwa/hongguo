@@ -11,7 +11,7 @@ from pathlib import Path
 
 
 SOURCE_DIRECTORIES = {
-    '.github', 'lib', 'native', 'android', 'macos',
+    '.github', 'lib', 'native', 'android', 'macos', 'packages',
     'assets', 'scripts', 'test', 'test_driver', 'integration_test',
 }
 SOURCE_FILES = {
