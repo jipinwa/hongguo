@@ -111,17 +111,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
           fileName:
               '$appSlug-backup-${DateTime.now().toIso8601String().substring(0, 10)}.json',
           bytes: Uint8List.fromList(utf8.encode(content)),
-          mimeType: 'application/json',
         );
         if (saved != null && mounted) setState(() => _message = '备份已保存');
       } else {
-        final file = await FilePicker.pickFile(
+        final result = await FilePicker.pickFiles(
           type: FileType.custom,
           allowedExtensions: ['json'],
         );
-        if (file == null || !mounted) return;
-        final size = await file.length();
-        if (size == null || size > 8 * 1024 * 1024) {
+        final path = (result == null || result.files.isEmpty)
+            ? null
+            : result.files.first.path;
+        if (path == null || !mounted) return;
+        final file = File(path);
+        if (await file.length() > 8 * 1024 * 1024) {
           throw const FormatException('备份文件过大或无法读取');
         }
         final content = utf8.decode(await file.readAsBytes());

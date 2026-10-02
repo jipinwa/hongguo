@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart';
@@ -42,16 +43,18 @@ class _ProfilesScreenState extends State<ProfilesScreen> {
           bytes: Uint8List.fromList(
             utf8.encode(widget.store.exportRecoveryData()),
           ),
-          mimeType: 'application/json',
         );
       } else {
-        final file = await FilePicker.pickFile(
+        final result = await FilePicker.pickFiles(
           type: FileType.custom,
           allowedExtensions: ['json'],
         );
-        if (file == null || !mounted) return;
-        final size = await file.length();
-        if (size == null || size > 8 * 1024 * 1024) {
+        final path = (result == null || result.files.isEmpty)
+            ? null
+            : result.files.first.path;
+        if (path == null || !mounted) return;
+        final file = File(path);
+        if (await file.length() > 8 * 1024 * 1024) {
           throw const FormatException('备份文件过大或无法读取');
         }
         final content = utf8.decode(await file.readAsBytes());
