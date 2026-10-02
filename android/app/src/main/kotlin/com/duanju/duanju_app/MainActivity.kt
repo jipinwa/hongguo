@@ -119,6 +119,23 @@ class MainActivity : FlutterActivity() {
         super.onSaveInstanceState(outState)
     }
 
+    override fun onDestroy() {
+        super.onDestroy()
+        if (isFinishing && !downloadsServiceRunning()) {
+            android.os.Process.killProcess(android.os.Process.myPid())
+        }
+    }
+
+    private fun downloadsServiceRunning(): Boolean {
+        val manager = getSystemService(Context.ACTIVITY_SERVICE) as? ActivityManager ?: return false
+        @Suppress("DEPRECATION")
+        return runCatching {
+            manager.getRunningServices(Int.MAX_VALUE).any {
+                it.service.className == "com.pravera.flutter_foreground_task.service.ForegroundService"
+            }
+        }.getOrDefault(false)
+    }
+
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
         deviceChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "duanju/device")

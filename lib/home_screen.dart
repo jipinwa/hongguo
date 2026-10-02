@@ -73,6 +73,7 @@ class _HomeScreenState extends State<HomeScreen> {
   final _navKey = GlobalKey<RemoteListState>();
   final _appBarFocus = FocusNode(debugLabel: 'tv-appbar');
   final _selectionFocus = FocusNode(debugLabel: 'tv-selection');
+  DateTime? _lastExitPress;
 
   List<SourceGroup> get _sourceGroups {
     final groups = SourceGroup.fromSources(widget.store.sources);
@@ -597,7 +598,13 @@ class _HomeScreenState extends State<HomeScreen> {
       );
     }
     if (_onlineSearch) {
-      _load();
+      unawaited(
+        _load().then((_) {
+          if (mounted && AppLayout.isTelevision(context)) {
+            _gridKey.currentState?.focusCurrent();
+          }
+        }),
+      );
     } else {
       setState(() {});
     }
@@ -1116,13 +1123,29 @@ class _HomeScreenState extends State<HomeScreen> {
                   ],
                 ),
         );
-        if (!television && !_selectionMode) return scaffold;
         return PopScope(
-          canPop:
-              !_selectionMode &&
-              (!television || _tab == 0 && _search.text.isEmpty),
+          canPop: false,
           onPopInvokedWithResult: (didPop, result) {
-            if (!didPop) _televisionBack();
+            if (didPop) return;
+            if (_selectionMode || _tab != 0 || _search.text.isNotEmpty) {
+              _televisionBack();
+              return;
+            }
+            final now = DateTime.now();
+            if (_lastExitPress == null ||
+                now.difference(_lastExitPress!) > const Duration(seconds: 2)) {
+              _lastExitPress = now;
+              ScaffoldMessenger.of(context)
+                ..hideCurrentSnackBar()
+                ..showSnackBar(
+                  const SnackBar(
+                    content: Text('再按一次返回键退出'),
+                    duration: Duration(seconds: 2),
+                  ),
+                );
+              return;
+            }
+            unawaited(SystemNavigator.pop());
           },
           child: CallbackShortcuts(
             bindings: {
@@ -1469,7 +1492,7 @@ class _HomeScreenState extends State<HomeScreen> {
       key: _gridKey,
       itemKeys: items.map((item) => item.id).toList(),
       columns: columns,
-      itemExtent: DramaTile.extentFor(context, tileWidth - 14) + 14,
+      itemExtent: DramaTile.televisionExtent(context, tileWidth),
       controller: controller,
       footer: footer,
       padding: const EdgeInsets.fromLTRB(18, 2, 18, 18),

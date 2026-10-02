@@ -1003,8 +1003,11 @@ class TelevisionSearchDialog extends StatefulWidget {
 
 class _TelevisionSearchDialogState extends State<TelevisionSearchDialog> {
   late final _controller = TextEditingController(text: widget.initialValue);
+  final _nextFocus = FocusNode();
+
   @override
   void dispose() {
+    _nextFocus.dispose();
     _controller.dispose();
     super.dispose();
   }
@@ -1021,14 +1024,23 @@ class _TelevisionSearchDialogState extends State<TelevisionSearchDialog> {
         child: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              SearchInput(
-                autofocus: true,
-                controller: _controller,
-                hint: '输入剧名',
-                suggestions: widget.suggestions,
-                onCancel: widget.onCancel,
-                onSearch: (value) => Navigator.pop(context, value),
+              CallbackShortcuts(
+                bindings: {
+                  const SingleActivator(
+                    LogicalKeyboardKey.arrowDown,
+                    includeRepeats: false,
+                  ): () => _nextFocus.requestFocus(),
+                },
+                child: SearchInput(
+                  autofocus: true,
+                  controller: _controller,
+                  hint: '输入剧名',
+                  suggestions: widget.suggestions,
+                  onCancel: widget.onCancel,
+                  onSearch: (value) => Navigator.pop(context, value),
+                ),
               ),
               if (widget.recentSearches.isNotEmpty) ...[
                 const SizedBox(height: 16),
@@ -1037,32 +1049,47 @@ class _TelevisionSearchDialogState extends State<TelevisionSearchDialog> {
                   runSpacing: 8,
                   children: [
                     for (final query in widget.recentSearches)
-                      ActionChip(
-                        label: Text(query),
-                        avatar: const Icon(Icons.history_rounded, size: 16),
+                      RemoteButton(
+                        key: ValueKey('recent-$query'),
+                        label: query,
+                        icon: Icons.history_rounded,
+                        focusNode: query == widget.recentSearches.first
+                            ? _nextFocus
+                            : null,
                         onPressed: () => Navigator.pop(context, query),
                       ),
                   ],
                 ),
               ],
+              const SizedBox(height: 16),
+              Wrap(
+                spacing: 8,
+                children: [
+                  RemoteButton(
+                    label: '搜索',
+                    icon: Icons.search_rounded,
+                    focusNode: widget.recentSearches.isEmpty
+                        ? _nextFocus
+                        : null,
+                    onPressed: () =>
+                        Navigator.pop(context, _controller.text.trim()),
+                  ),
+                  const SizedBox(width: 8),
+                  RemoteButton(
+                    label: '清空',
+                    onPressed: () => Navigator.pop(context, ''),
+                  ),
+                  const SizedBox(width: 8),
+                  RemoteButton(
+                    label: '取消',
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ],
+              ),
             ],
           ),
         ),
       ),
     ),
-    actions: [
-      TextButton(
-        onPressed: () => Navigator.pop(context),
-        child: const Text('取消'),
-      ),
-      TextButton(
-        onPressed: () => Navigator.pop(context, ''),
-        child: const Text('清空'),
-      ),
-      FilledButton(
-        onPressed: () => Navigator.pop(context, _controller.text.trim()),
-        child: const Text('搜索'),
-      ),
-    ],
   );
 }

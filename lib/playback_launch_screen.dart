@@ -28,7 +28,7 @@ Future<void> openPlaybackDirectly(
       warning: detail.warning,
     );
     repository.catalogUpdates.publish(mergedDrama, retryCover: true);
-    await saveUserChange(context, () => store.refreshDrama(mergedDrama));
+    unawaited(saveUserChange(context, () => store.refreshDrama(mergedDrama)));
     if (!context.mounted || profileEpoch != store.profileEpoch) return;
     if (merged.episodes.isEmpty) {
       throw AppFailure('暂时没有可播放的集数');
@@ -138,7 +138,9 @@ class _PlaybackLaunchScreenState extends State<PlaybackLaunchScreen> {
         warning: detail.warning,
       );
       widget.repository.catalogUpdates.publish(drama, retryCover: true);
-      await saveUserChange(context, () => widget.store.refreshDrama(drama));
+      unawaited(
+        saveUserChange(context, () => widget.store.refreshDrama(drama)),
+      );
       if (!mounted ||
           generation != _generation ||
           _profileEpoch != widget.store.profileEpoch) {

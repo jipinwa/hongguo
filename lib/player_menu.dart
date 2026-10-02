@@ -93,7 +93,7 @@ class _PlayerMenuState extends State<PlayerMenu> {
       backgroundColor: colors.surface,
       child: SizedBox(
         width: landscape ? math.min(440, size.width * .6) : 600,
-        height: landscape ? size.height : size.height * .72,
+        height: landscape ? size.height - 24 : size.height * .72,
         child: Column(
           children: [
             Padding(

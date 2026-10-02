@@ -356,8 +356,16 @@ class DramaTile extends StatelessWidget {
       (width * 1.5 + 13 + titleHeight(context) + subtitleHeight(context))
           .ceilToDouble();
 
+  static double televisionExtent(BuildContext context, double width) =>
+      ((width - 14) * 1.5 +
+              13 +
+              titleHeight(context) +
+              subtitleHeight(context) +
+              10)
+          .ceilToDouble();
+
   static (int, double) televisionGridMetrics(double width) {
-    final columns = ((width - 36) / 110).floor().clamp(1, 10);
+    final columns = ((width - 36) / 128).floor().clamp(4, 10);
     final tileWidth = (width - 36 - (columns - 1) * 14) / columns;
     return (columns, tileWidth);
   }

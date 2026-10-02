@@ -257,7 +257,7 @@ class _SavedLibraryState extends State<SavedLibrary> {
                           itemKeys: items.map((item) => item.id).toList(),
                           columns: columns,
                           itemExtent:
-                              DramaTile.extentFor(context, tileWidth - 14) + 14,
+                              DramaTile.televisionExtent(context, tileWidth),
                           autofocus: widget.remoteAutofocus,
                           onExitLeft: widget.onExitLeft,
                           onExitUp: widget.onExitUp,

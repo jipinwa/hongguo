@@ -190,7 +190,7 @@ class _RecommendationsScreenState extends State<RecommendationsScreen> {
                         itemKeys: _items.map((item) => item.id).toList(),
                         columns: columns,
                         itemExtent:
-                            DramaTile.extentFor(context, tileWidth - 14) + 14,
+                            DramaTile.televisionExtent(context, tileWidth),
                         controller: _scroll,
                         padding: const EdgeInsets.fromLTRB(18, 2, 18, 18),
                         onExitLeft: widget.onExitLeft,
