@@ -22,6 +22,8 @@ import android.util.Rational
 import android.view.InputDevice
 import com.arthenica.mobileffmpeg.Config
 import com.mobile.ffmpeg.FFmpeg
+import com.mobile.ffmpeg.Statistics
+import com.mobile.ffmpeg.StatisticsCallback
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 import java.util.concurrent.ConcurrentHashMap
@@ -251,9 +253,13 @@ class MainActivity : FlutterActivity() {
                     synchronized(job.log) { job.log.append(message.text).append('\n') }
                 }
             }
-            Config.enableStatisticsCallback { statistics ->
-                ffmpegActive.get()?.timeMs = statistics.time.toLong()
-            }
+            Config.enableStatisticsCallback(object : StatisticsCallback {
+                override fun apply(statistics: Statistics) {
+                    ffmpegActive.get()?.timeMs = statistics.time.toLong()
+                }
+
+                override fun onCancel() {}
+            })
             ffmpegCallbacksReady = true
         }
     }
