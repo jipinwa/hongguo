@@ -15,24 +15,16 @@ import android.content.IntentFilter
 import android.content.pm.ActivityInfo
 import android.content.pm.PackageManager
 import android.content.res.Configuration
-import android.graphics.Bitmap
-import android.graphics.BitmapFactory
-import android.graphics.ImageFormat
-import android.graphics.Matrix
 import android.graphics.Rect
-import android.graphics.YuvImage
-import android.media.Image
-import android.media.MediaCodec
-import android.media.MediaFormat
 import android.net.ConnectivityManager
 import android.net.Uri
 import android.util.Rational
 import android.view.InputDevice
+import com.arthenica.mobileffmpeg.Config
+import com.mobile.ffmpeg.FFmpeg
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
-import java.io.ByteArrayOutputStream
-import java.io.File
-import java.io.FileOutputStream
+import java.util.concurrent.ConcurrentHashMap
 
 class MainActivity : FlutterActivity() {
     private var headroomReadAt = 0L
@@ -191,27 +183,45 @@ class MainActivity : FlutterActivity() {
                                 call.argument<Int>("bottom")
                             ))
                         }
-                        "decodeHevcImage" -> {
-                            val input = call.argument<String>("input") ?: ""
-                            val output = call.argument<String>("output") ?: ""
-                            val filters = call.argument<String>("filters") ?: ""
-                            val maxSize = call.argument<Int>("maxSize") ?: 800
-                            if (input.isEmpty() || output.isEmpty()) {
-                                result.error("invalid_args", "缺少海报解码参数", null)
+                        "ffmpegRun" -> {
+                            val id = call.argument<String>("id") ?: ""
+                            val arguments = call.argument<List<String>>("arguments") ?: emptyList()
+                            if (id.isEmpty() || arguments.isEmpty()) {
+                                result.error("invalid_args", "缺少媒体处理参数", null)
                             } else {
-                                Thread {
-                                    val decoded = runCatching {
-                                        decodeHevcImage(input, output, filters, maxSize)
-                                    }.getOrNull()
-                                    runOnUiThread {
-                                        if (decoded != null) {
-                                            result.success(decoded)
-                                        } else {
-                                            result.error("decode_failed", "海报解码失败", null)
-                                        }
-                                    }
-                                }.start()
+                                startFFmpeg(id, arguments, probe = false) { code, cancelled ->
+                                    result.success(
+                                        mapOf("code" to code, "cancelled" to cancelled)
+                                    )
+                                }
                             }
+                        }
+                        "ffmpegProbe" -> {
+                            val file = call.argument<String>("file") ?: ""
+                            if (file.isEmpty()) {
+                                result.error("invalid_args", "缺少媒体路径", null)
+                            } else {
+                                startFFmpeg(
+                                    "probe-${System.nanoTime()}",
+                                    listOf("-hide_banner", "-i", file),
+                                    probe = true
+                                ) { _, _ ->
+                                    result.success(lastProbeResult)
+                                }
+                            }
+                        }
+                        "ffmpegProgress" -> {
+                            val id = call.argument<String>("id") ?: ""
+                            result.success(ffmpegJobs[id]?.timeMs ?: 0L)
+                        }
+                        "ffmpegCancel" -> {
+                            val id = call.argument<String>("id") ?: ""
+                            val job = ffmpegJobs[id]
+                            if (job != null && job.running) {
+                                job.cancelled = true
+                                FFmpeg.cancel()
+                            }
+                            result.success(null)
                         }
                         else -> result.notImplemented()
                     }
@@ -219,127 +229,155 @@ class MainActivity : FlutterActivity() {
             }
     }
 
-    private fun decodeHevcImage(
-        input: String,
-        output: String,
-        filters: String,
-        maxSize: Int
-    ): String? {
-        val data = File(input).readBytes()
-        if (data.isEmpty() || data.size > 96 * 1024 * 1024) return null
-        val codec = MediaCodec.createDecoderByType(MediaFormat.MIMETYPE_VIDEO_HEVC)
-        var frame: Bitmap? = null
-        try {
-            val format = MediaFormat.createVideoFormat(MediaFormat.MIMETYPE_VIDEO_HEVC, 1920, 1080)
-            format.setInteger(MediaFormat.KEY_MAX_INPUT_SIZE, 4 * 1024 * 1024)
-            codec.configure(format, null, null, 0)
-            codec.start()
-            val info = MediaCodec.BufferInfo()
-            var offset = 0
-            val deadline = SystemClock.elapsedRealtime() + 12000L
-            while (SystemClock.elapsedRealtime() < deadline) {
-                if (offset < data.size) {
-                    val index = codec.dequeueInputBuffer(10000L)
-                    if (index >= 0) {
-                        val buffer = codec.getInputBuffer(index)!!
-                        buffer.clear()
-                        val chunk = minOf(buffer.remaining(), data.size - offset)
-                        buffer.put(data, offset, chunk)
-                        offset += chunk
-                        codec.queueInputBuffer(
-                            index, 0, chunk, 0,
-                            if (offset >= data.size) MediaCodec.BUFFER_FLAG_END_OF_STREAM else 0
-                        )
-                    }
+    private class FFmpegJob(val id: String) {
+        val log = StringBuilder()
+        @Volatile var timeMs = 0L
+        @Volatile var running = true
+        @Volatile var cancelled = false
+    }
+
+    private val ffmpegJobs = ConcurrentHashMap<String, FFmpegJob>()
+    private val ffmpegActive = ThreadLocal<FFmpegJob?>()
+    @Volatile private var ffmpegCallbacksReady = false
+    @Volatile private var lastProbeResult: Map<String, Any> = emptyMap()
+
+    private fun ensureFFmpegCallbacks() {
+        if (ffmpegCallbacksReady) return
+        synchronized(ffmpegJobs) {
+            if (ffmpegCallbacksReady) return
+            Config.enableLogCallback { message ->
+                val job = ffmpegActive.get()
+                if (job != null) {
+                    synchronized(job.log) { job.log.append(message.text).append('\n') }
                 }
-                val index = codec.dequeueOutputBuffer(info, 10000L)
-                if (index >= 0) {
-                    val image = codec.getOutputImage(index)
-                    if (image != null) {
-                        val width = image.width
-                        val height = image.height
-                        val nv21 = imageToNV21(image)
-                        codec.releaseOutputBuffer(index, false)
-                        val yuv = YuvImage(nv21, ImageFormat.NV21, width, height, null)
-                        val bytes = ByteArrayOutputStream()
-                        if (yuv.compressToJpeg(Rect(0, 0, width, height), 95, bytes)) {
-                            frame = BitmapFactory.decodeByteArray(
-                                bytes.toByteArray(), 0, bytes.size()
-                            )
+            }
+            Config.enableStatisticsCallback { statistics ->
+                ffmpegActive.get()?.timeMs = statistics.time.toLong()
+            }
+            ffmpegCallbacksReady = true
+        }
+    }
+
+    private fun startFFmpeg(
+        id: String,
+        arguments: List<String>,
+        probe: Boolean,
+        onDone: (Int, Boolean) -> Unit
+    ) {
+        val job = FFmpegJob(id)
+        ffmpegJobs[id] = job
+        Thread {
+            val code = runCatching {
+                ensureFFmpegCallbacks()
+                ffmpegActive.set(job)
+                try {
+                    FFmpeg.execute(arguments.toTypedArray())
+                } finally {
+                    ffmpegActive.remove()
+                }
+            }.getOrElse { -1 }
+            job.running = false
+            if (probe) {
+                val text = synchronized(job.log) { job.log.toString() }
+                lastProbeResult = parseFFmpegProbe(text)
+            }
+            ffmpegJobs.remove(id)
+            runOnUiThread { onDone(code, job.cancelled) }
+        }.start()
+    }
+
+    private fun parseFFmpegProbe(text: String): Map<String, Any> {
+        val streams = mutableListOf<Map<String, Any>>()
+        var duration = 0.0
+        Regex("""Duration:\s*(\d+):(\d+):(\d+(?:\.\d+)?)""").find(text)?.let { match ->
+            duration = match.groupValues[1].toDouble() * 3600 +
+                match.groupValues[2].toDouble() * 60 +
+                match.groupValues[3].toDouble()
+        }
+        for (match in Regex("""Stream #\S+[^\n]*""").findAll(text)) {
+            val line = match.value
+            when {
+                line.contains(": Video:") -> {
+                    val codec = Regex("""Video:\s*(\w+)""").find(line)
+                        ?.groupValues?.get(1).orEmpty()
+                    if (codec.isEmpty()) continue
+                    val pixel = Regex(
+                        """Video:\s*\w+(?:\s*\([^)]*\))*,\s*(\w+)(?:\(([^)]*)\))?"""
+                    ).find(line)
+                    val size = Regex("""(\d{2,5})x(\d{2,5})""").find(line)
+                    val sar = Regex("""SAR\s+([0-9]+:[0-9]+)""").find(line)
+                        ?.groupValues?.get(1) ?: "1:1"
+                    var colorTransfer = "unknown"
+                    var colorPrimaries = "unknown"
+                    pixel?.groupValues?.get(2)?.let { colors ->
+                        val parts = colors.split(',', '/').map { it.trim() }.filter { it.isNotEmpty() }
+                        if (parts.isNotEmpty()) {
+                            colorPrimaries = when (parts[0]) {
+                                "tv", "pc" -> if (parts.size > 1) parts[1] else "unknown"
+                                else -> parts[0]
+                            }
+                            colorTransfer = when {
+                                parts.size >= 3 -> parts[2]
+                                parts.size >= 2 && parts[0] != "tv" && parts[0] != "pc" -> parts[1]
+                                parts.size >= 2 -> parts[1]
+                                else -> "unknown"
+                            }
                         }
-                        break
                     }
-                    codec.releaseOutputBuffer(index, false)
-                    if ((info.flags and MediaCodec.BUFFER_FLAG_END_OF_STREAM) != 0) break
+                    streams.add(
+                        mapOf(
+                            "codec_type" to "video",
+                            "codec_name" to codec,
+                            "width" to (size?.groupValues?.get(1)?.toIntOrNull() ?: 0),
+                            "height" to (size?.groupValues?.get(2)?.toIntOrNull() ?: 0),
+                            "pix_fmt" to (pixel?.groupValues?.get(1).orEmpty()),
+                            "sample_aspect_ratio" to sar,
+                            "color_transfer" to colorTransfer,
+                            "color_primaries" to colorPrimaries,
+                            "extradata_hash" to "unknown"
+                        )
+                    )
+                }
+                line.contains(": Audio:") -> {
+                    val codec = Regex("""Audio:\s*(\w+)""").find(line)
+                        ?.groupValues?.get(1).orEmpty()
+                    if (codec.isEmpty()) continue
+                    val tags = Regex("""Audio:\s*\w+((?:\s*\([^)]*\))+)""").find(line)
+                        ?.groupValues?.get(1).orEmpty()
+                    val firstTag = Regex("""\(([^)]*)\)""").find(tags)
+                        ?.groupValues?.get(1)
+                    val profile = if (firstTag != null && !firstTag.contains('/')) firstTag else "unknown"
+                    val sampleRate = Regex("""(\d+)\s*Hz""").find(line)
+                        ?.groupValues?.get(1) ?: "0"
+                    val layout = Regex("""Hz,\s*([a-zA-Z0-9.()]+?)\s*,""").find(line)
+                        ?.groupValues?.get(1) ?: "stereo"
+                    val channels = when {
+                        layout.startsWith("mono") -> 1
+                        layout.startsWith("stereo") -> 2
+                        layout.startsWith("1.") -> 2
+                        layout.startsWith("2.") -> 3
+                        layout.startsWith("5.1") || layout.startsWith("5.0") -> 6
+                        layout.startsWith("7.1") -> 8
+                        else -> 2
+                    }
+                    streams.add(
+                        mapOf(
+                            "codec_type" to "audio",
+                            "codec_name" to codec,
+                            "profile" to profile,
+                            "sample_rate" to sampleRate,
+                            "channels" to channels,
+                            "channel_layout" to layout,
+                            "extradata_hash" to "unknown"
+                        )
+                    )
                 }
             }
-        } finally {
-            runCatching { codec.stop() }
-            runCatching { codec.release() }
         }
-        val source = frame ?: return null
-        val transformed = transformCover(source, filters, maxSize)
-        FileOutputStream(output).use { stream ->
-            if (!transformed.compress(Bitmap.CompressFormat.JPEG, 90, stream)) return null
-        }
-        return output
-    }
-
-    private fun imageToNV21(image: Image): ByteArray {
-        val width = image.width
-        val height = image.height
-        val planes = image.planes
-        val yPlane = planes[0]
-        val uPlane = planes[1]
-        val vPlane = planes[2]
-        val result = ByteArray(width * height * 3 / 2)
-        var pos = 0
-        val yBuffer = yPlane.buffer
-        val yRowStride = yPlane.rowStride
-        val yPixelStride = yPlane.pixelStride
-        for (row in 0 until height) {
-            val start = row * yRowStride
-            if (yPixelStride == 1) {
-                yBuffer.position(start)
-                yBuffer.get(result, pos, width)
-            } else {
-                for (col in 0 until width) {
-                    result[pos + col] = yBuffer.get(start + col * yPixelStride)
-                }
-            }
-            pos += width
-        }
-        val vBuffer = vPlane.buffer
-        val uBuffer = uPlane.buffer
-        val vRowStride = vPlane.rowStride
-        val vPixelStride = vPlane.pixelStride
-        val uRowStride = uPlane.rowStride
-        val uPixelStride = uPlane.pixelStride
-        for (row in 0 until height / 2) {
-            for (col in 0 until width / 2) {
-                result[pos++] = vBuffer.get(row * vRowStride + col * vPixelStride)
-                result[pos++] = uBuffer.get(row * uRowStride + col * uPixelStride)
-            }
-        }
-        return result
-    }
-
-    private fun transformCover(source: Bitmap, filters: String, maxSize: Int): Bitmap {
-        val matrix = Matrix()
-        for (token in filters.split(',')) {
-            when (token.trim()) {
-                "hflip" -> matrix.postScale(-1f, 1f)
-                "vflip" -> matrix.postScale(1f, -1f)
-                "transpose=clock" -> matrix.postRotate(90f)
-                "transpose=cclock" -> matrix.postRotate(-90f)
-            }
-        }
-        val longest = maxOf(source.width, source.height)
-        if (longest > maxSize) {
-            val scale = maxSize.toFloat() / longest
-            matrix.postScale(scale, scale)
-        }
-        return Bitmap.createBitmap(source, 0, 0, source.width, source.height, matrix, true)
+        return mapOf(
+            "streams" to streams,
+            "format" to mapOf("duration" to duration.toString())
+        )
     }
 
     private fun pictureInPictureSupported(): Boolean {

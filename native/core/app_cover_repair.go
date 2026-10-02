@@ -170,5 +170,6 @@ func (engine *nativeEngine) prepareCover(ctx context.Context, drama nativeDrama)
 		return nil, errors.Join(writeErr, closeErr)
 	}
 	result["input"], result["filters"] = output.Name(), strings.Join(image.filters, ",")
+	result["width"], result["height"] = image.width, image.height
 	return result, nil
 }

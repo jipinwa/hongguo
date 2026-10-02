@@ -93,6 +93,8 @@ func isHEICImage(data []byte) bool {
 type heifImage struct {
 	data    []byte
 	filters []string
+	width   int
+	height  int
 }
 
 func extractHEICImage(data []byte) (heifImage, error) {
@@ -126,7 +128,7 @@ func extractHEICImage(data []byte) (heifImage, error) {
 	if err := validateHEICItem(heifBoxData(children, "iinf"), itemID); err != nil {
 		return image, err
 	}
-	config, filters, err := heifItemProperties(heifBoxData(children, "iprp"), itemID)
+	config, filters, width, height, err := heifItemProperties(heifBoxData(children, "iprp"), itemID)
 	if err != nil {
 		return image, err
 	}
@@ -136,6 +138,8 @@ func extractHEICImage(data []byte) (heifImage, error) {
 	}
 	image.data, err = heifAnnexB(config, item)
 	image.filters = filters
+	image.width = int(width)
+	image.height = int(height)
 	return image, err
 }
 
@@ -179,20 +183,20 @@ func validateHEICItem(data []byte, itemID uint64) error {
 	return errors.New("HEIC 主图片不存在")
 }
 
-func heifItemProperties(data []byte, itemID uint64) ([]byte, []string, error) {
+func heifItemProperties(data []byte, itemID uint64) ([]byte, []string, uint64, uint64, error) {
 	boxes, err := heifBoxes(data)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, 0, 0, err
 	}
 	properties, err := heifBoxes(heifBoxData(boxes, "ipco"))
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, 0, 0, err
 	}
 	reader := &heifReader{data: heifBoxData(boxes, "ipma")}
 	version, flags := reader.uint(1), reader.uint(3)
 	count := reader.uint(4)
 	if version > 1 || count > 4096 || reader.err != nil {
-		return nil, nil, errors.New("HEIC 图片属性无效")
+		return nil, nil, 0, 0, errors.New("HEIC 图片属性无效")
 	}
 	var config []byte
 	var filters []string
@@ -249,9 +253,9 @@ func heifItemProperties(data []byte, itemID uint64) ([]byte, []string, error) {
 		}
 	}
 	if reader.err != nil || len(config) < 23 || width == 0 || height == 0 || width > 4096 || height > 4096 {
-		return nil, nil, errors.New("HEIC 编码信息或图片尺寸无效")
+		return nil, nil, 0, 0, errors.New("HEIC 编码信息或图片尺寸无效")
 	}
-	return config, filters, nil
+	return config, filters, width, height, nil
 }
 
 func heifItemData(data []byte, itemID uint64, file, inline []byte) ([]byte, error) {

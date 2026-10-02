@@ -9,6 +9,7 @@ import 'package:path_provider/path_provider.dart';
 import 'core_bridge.dart';
 import 'app_theme.dart';
 import 'app_layout.dart';
+import 'background_downloads.dart';
 import 'local_store.dart';
 import 'profiles_screen.dart';
 import 'remote_widgets.dart';
@@ -178,6 +179,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
+  Future<void> _toggleAutoExport() async {
+    try {
+      if (!widget.store.autoExport) {
+        await BackgroundDownloads.ensureStarted();
+      }
+      await widget.store.setAutoExport(!widget.store.autoExport);
+    } catch (error) {
+      if (mounted) setState(() => _message = error.toString());
+    }
+  }
+
+  Future<void> _toggleExportPosters() => saveUserChange(
+    context,
+    () => widget.store.setExportPosters(!widget.store.exportPosters),
+  );
+
   List<({String id, IconData icon, String title, String subtitle, VoidCallback? onPressed})>
   _televisionEntries() => [
     (
@@ -266,6 +283,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
           ),
         ),
+      ),
+      (
+        id: 'auto-export',
+        icon: Icons.movie_filter_outlined,
+        title: '自动导出 Emby',
+        subtitle: widget.store.autoExport
+            ? '已开启 · 在 exports 目录生成视频与海报元数据'
+            : '已关闭 · 按确认开启',
+        onPressed: _busy ? null : _toggleAutoExport,
+      ),
+      (
+        id: 'export-posters',
+        icon: Icons.image_outlined,
+        title: '导出海报文件',
+        subtitle: widget.store.exportPosters
+            ? '已开启 · 同时写入海报文件'
+            : '已关闭 · 只写海报 URL',
+        onPressed: _busy ? null : _toggleExportPosters,
       ),
       (
         id: 'backup',
@@ -403,6 +438,38 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
                     ),
                   ),
+                ),
+                SwitchListTile(
+                  value: widget.store.autoExport,
+                  title: const Text('下载完成后自动导出 Emby'),
+                  subtitle: const Text(
+                    '在下载目录的 exports 中生成视频和海报 URL 元数据，可将该目录加入 Emby 媒体库。',
+                  ),
+                  onChanged: _busy
+                      ? null
+                      : (value) async {
+                          try {
+                            if (value) {
+                              await BackgroundDownloads.ensureStarted();
+                            }
+                            await widget.store.setAutoExport(value);
+                          } catch (error) {
+                            if (mounted) {
+                              setState(() => _message = error.toString());
+                            }
+                          }
+                        },
+                ),
+                SwitchListTile(
+                  value: widget.store.exportPosters,
+                  title: const Text('同时导出海报文件'),
+                  subtitle: const Text('默认只写海报 URL。源站海报需要解密或外部读取失败时可开启。'),
+                  onChanged: _busy
+                      ? null
+                      : (value) => saveUserChange(
+                          context,
+                          () => widget.store.setExportPosters(value),
+                        ),
                 ),
                 ListTile(
                   leading: const Icon(Icons.backup_outlined),

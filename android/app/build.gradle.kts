@@ -65,7 +65,17 @@ android {
     packaging {
         jniLibs {
             useLegacyPackaging = true
+            pickFirsts += setOf("**/libc++_shared.so")
         }
+        resources {
+            excludes += setOf("META-INF/DEPENDENCIES", "META-INF/LICENSE*", "META-INF/NOTICE*")
+        }
+    }
+}
+
+dependencies {
+    implementation("com.github.yangfeng1994:FFmpeg-Android:v2.0.1") {
+        exclude(group = "com.android.support")
     }
 }
 
