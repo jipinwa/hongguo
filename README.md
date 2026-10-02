@@ -86,10 +86,11 @@ Android 正式发布签名在仓库 Secrets 配置：
 
 | Secret | 内容 |
 | --- | --- |
-| `ANDROID_KEYSTORE_BASE64` | JKS 文件 Base64 |
+| `ANDROID_KEYSTORE_BASE64` | 签名文件（PKCS12 / JKS）Base64 |
 | `ANDROID_KEYSTORE_PASSWORD` | 签名文件密码 |
 | `ANDROID_KEY_ALIAS` | 密钥别名 |
 | `ANDROID_KEY_PASSWORD` | 密钥密码 |
+| `ANDROID_KEYSTORE_TYPE` | 可选，签名文件类型（如 `PKCS12`），未设置时自动识别 |
 
 未配置时生成预览（debug 签名）APK，不同构建机的预览签名可能无法相互覆盖。
 

@@ -98,7 +98,7 @@ class _BatchDownloadScreenState extends State<BatchDownloadScreen> {
                             const SizedBox(height: 12),
                             DropdownButtonFormField<int>(
                               key: const ValueKey('batch-download-quality'),
-                              initialValue: _batch.quality,
+                              value: _batch.quality,
                               isExpanded: true,
                               decoration: const InputDecoration(
                                 labelText: '下载画质',

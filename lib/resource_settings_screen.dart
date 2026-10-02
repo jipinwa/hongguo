@@ -28,7 +28,7 @@ class DownloadPreferencesScreen extends StatelessWidget {
                   subtitle: const Text('指定画质不可用时，使用源站提供的可用版本。'),
                 ),
                 DropdownButtonFormField<int>(
-                  initialValue: preferences.quality,
+                  value: preferences.quality,
                   decoration: const InputDecoration(labelText: '下载画质'),
                   items: [
                     for (final value in DownloadPreferences.qualities)
@@ -165,7 +165,7 @@ class _ResourceSettingsScreenState extends State<ResourceSettingsScreen> {
 
   Widget _count(String title, int value, ValueChanged<int> change) =>
       DropdownButtonFormField<int>(
-        initialValue: value,
+        value: value,
         decoration: InputDecoration(labelText: title),
         items: [
           for (var i = 1; i <= 6; i++)
@@ -208,7 +208,7 @@ class _ResourceSettingsScreenState extends State<ResourceSettingsScreen> {
                       child: Text(_settings!.warning),
                     ),
                   DropdownButtonFormField<String>(
-                    initialValue: _mode,
+                    value: _mode,
                     decoration: const InputDecoration(labelText: '连接方式'),
                     items: const [
                       DropdownMenuItem(value: 'auto', child: Text('自动')),

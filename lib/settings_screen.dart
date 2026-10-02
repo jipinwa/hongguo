@@ -74,22 +74,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
       builder: (context) => SimpleDialog(
         title: const Text('外观主题'),
         children: [
-          RadioGroup<String>(
-            groupValue: widget.store.themeMode,
-            onChanged: (value) => Navigator.pop(context, value),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                for (final mode in ['light', 'dark', 'system'])
-                  RadioListTile<String>(
-                    value: mode,
-                    title: Text(AppTheme.label(mode)),
-                    subtitle: mode == 'system'
-                        ? const Text('随设备的深色模式自动切换')
-                        : null,
-                  ),
-              ],
-            ),
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              for (final mode in ['light', 'dark', 'system'])
+                RadioListTile<String>(
+                  value: mode,
+                  groupValue: widget.store.themeMode,
+                  onChanged: (value) => Navigator.pop(context, value),
+                  title: Text(AppTheme.label(mode)),
+                  subtitle: mode == 'system'
+                      ? const Text('随设备的深色模式自动切换')
+                      : null,
+                ),
+            ],
           ),
         ],
       ),
