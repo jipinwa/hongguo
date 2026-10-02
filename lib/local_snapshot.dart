@@ -30,8 +30,6 @@ class LocalSnapshot {
     'activeProfile',
     'displayMode',
     'themeMode',
-    'autoExport',
-    'exportPosters',
     'forceLogin',
   };
   final SharedPreferences preferences;
@@ -74,8 +72,6 @@ class LocalSnapshot {
     for (final entry in values.entries) {
       final boolean = {
         'hideVip',
-        'autoExport',
-        'exportPosters',
         'forceLogin',
       }.contains(entry.key.split('.').last);
       if (!owns(entry.key) ||

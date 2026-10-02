@@ -215,7 +215,6 @@ void main() {
         await tester.pumpAndSettle();
         final menu = find.byKey(const ValueKey('download-queue-actions'));
         final filters = find.byKey(const ValueKey('download-filters'));
-        final local = find.byKey(const ValueKey('download-local-media'));
         expect(
           tester.getCenter(menu).dy,
           closeTo(tester.getCenter(find.text('下载任务')).dy, .01),
@@ -224,10 +223,6 @@ void main() {
         expect(
           tester.getRect(menu).bottom,
           lessThan(tester.getRect(filters).top),
-        );
-        expect(
-          tester.getRect(local).bottom,
-          lessThanOrEqualTo(tester.getRect(filters).top),
         );
         final completed = find.byKey(
           const ValueKey('download-filter-completed'),

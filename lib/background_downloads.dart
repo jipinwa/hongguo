@@ -1,14 +1,9 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:ffmpeg_kit_flutter_new_min_gpl/ffmpeg_kit.dart';
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 
-import 'package:shared_preferences/shared_preferences.dart';
-
 import 'core_bridge.dart';
-import 'local_store.dart';
-import 'media_library.dart';
 import 'app_build.dart';
 
 @pragma('vm:entry-point')
@@ -23,7 +18,7 @@ class BackgroundDownloads {
       androidNotificationOptions: AndroidNotificationOptions(
         channelId: 'zhenguojian_downloads',
         channelName: '$appName下载',
-        channelDescription: '后台下载和媒体处理进度',
+        channelDescription: '后台下载进度',
         onlyAlertOnce: true,
       ),
       iosNotificationOptions: const IOSNotificationOptions(
@@ -65,18 +60,12 @@ class BackgroundDownloads {
 
 class DownloadTaskHandler extends TaskHandler {
   final repository = NativeRepository(background: true);
-  MediaLibrary? library;
   bool _polling = false;
   int _idle = 0;
 
   @override
   Future<void> onStart(DateTime timestamp, TaskStarter starter) async {
     await repository.initialize();
-    library = MediaLibrary(
-      repository,
-      LocalStore(await SharedPreferences.getInstance()),
-      automaticWorker: true,
-    );
     await _update();
   }
 
@@ -89,7 +78,6 @@ class DownloadTaskHandler extends TaskHandler {
     if (_polling) return;
     _polling = true;
     try {
-      if (library != null) unawaited(library!.maybeExport());
       final jobs = await repository.downloads();
       final active = jobs.where((job) => job.active).toList();
       final work = await repository.workLease('', '');
@@ -106,7 +94,7 @@ class DownloadTaskHandler extends TaskHandler {
       await FlutterForegroundTask.updateService(
         notificationTitle: appName,
         notificationText: work > 0
-            ? '正在更新站源或处理本地媒体'
+            ? '正在更新站源'
             : active.isEmpty
             ? '下载已完成或暂停'
             : '${active.length} 集下载中 · ${(bytes / 1048576).toStringAsFixed(1)} MB',
@@ -133,11 +121,8 @@ class DownloadTaskHandler extends TaskHandler {
 
   @override
   Future<void> onDestroy(DateTime timestamp, bool isTimeout) async {
-    await library?.cancel();
-    library?.dispose();
     if (isTimeout) {
       await repository.controlDownloads('pauseAll');
-      if (ffmpegSessionStarted) await FFmpegKit.cancel();
     }
   }
 }

@@ -8,7 +8,6 @@ import 'app_layout.dart';
 import 'core_bridge.dart';
 import 'download_collections.dart';
 import 'local_store.dart';
-import 'local_media_screen.dart';
 import 'models.dart';
 import 'player_screen.dart';
 import 'remote_widgets.dart';
@@ -395,20 +394,6 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
         tooltip: '多选下载任务',
         onPressed: () => setState(() => _selecting = true),
         icon: const Icon(Icons.checklist_rounded),
-      ),
-      IconButton(
-        key: const ValueKey('download-local-media'),
-        tooltip: '本地媒体与合并',
-        onPressed: () => Navigator.push(
-          context,
-          MaterialPageRoute<void>(
-            builder: (_) => LocalMediaScreen(
-              repository: widget.repository,
-              store: widget.store,
-            ),
-          ),
-        ),
-        icon: const Icon(Icons.video_library_outlined),
       ),
     ],
     PopupMenuButton<String>(
@@ -820,20 +805,6 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
           '多选',
           Icons.checklist_rounded,
           _busy ? null : () => setState(() => _selecting = true),
-        ),
-        (
-          'local',
-          '本地媒体',
-          Icons.video_library_outlined,
-          () => Navigator.push(
-            context,
-            MaterialPageRoute<void>(
-              builder: (_) => LocalMediaScreen(
-                repository: widget.repository,
-                store: widget.store,
-              ),
-            ),
-          ),
         ),
         ('queue', '队列操作', Icons.tune_rounded, _busy ? null : _queueActions),
       ],

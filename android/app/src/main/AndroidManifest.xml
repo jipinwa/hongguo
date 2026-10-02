@@ -1,6 +1,4 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:tools="http://schemas.android.com/tools">
-    <uses-sdk tools:overrideLibrary="com.antonkarpenko"/>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-permission android:name="android.permission.INTERNET"/>
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE"/>
@@ -15,7 +13,7 @@
     <application
         android:label="${appLabel}"
         android:name="${applicationName}"
-        android:icon="@drawable/app_icon"
+        android:icon="@mipmap/ic_launcher"
         android:banner="${appBanner}"
         android:usesCleartextTraffic="true"
         android:allowBackup="false">

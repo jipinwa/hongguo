@@ -5,9 +5,9 @@ from pathlib import Path
 from PIL import Image, ImageDraw, ImageFont
 
 root = Path(__file__).resolve().parents[1]
-parser = argparse.ArgumentParser(description='从统一图形生成红果鉴 / 真果鉴平台资源；需要 Pillow。')
+parser = argparse.ArgumentParser(description='从统一图形生成真果鉴 / 红果鉴平台资源；需要 Pillow。')
 parser.add_argument('--output', type=Path, default=root)
-parser.add_argument('--font', type=Path, default=Path('/System/Library/Fonts/PingFang.ttc'))
+parser.add_argument('--font', type=Path, default=Path('C:/Windows/Fonts/msyh.ttc'))
 options = parser.parse_args()
 output = options.output
 icon = Image.new('RGB', (1024, 1024), '#101114')
@@ -20,13 +20,16 @@ def save(image, name):
     destination.parent.mkdir(parents=True, exist_ok=True)
     image.save(destination)
 
-contents = json.loads((root / 'ios/Runner/Assets.xcassets/AppIcon.appiconset/Contents.json').read_text())
-for entry in contents['images']:
-    if 'filename' in entry:
-        size = round(float(entry['size'].split('x')[0]) * float(entry['scale'].rstrip('x')))
-        save(icon.resize((size, size), Image.Resampling.LANCZOS),
-             'ios/Runner/Assets.xcassets/AppIcon.appiconset/' + entry['filename'])
-save(icon.resize((256, 256), Image.Resampling.LANCZOS), 'windows/runner/resources/app_icon.ico')
+for density, size in [('mdpi', 48), ('hdpi', 72), ('xhdpi', 96), ('xxhdpi', 144), ('xxxhdpi', 192)]:
+    save(icon.resize((size, size), Image.Resampling.LANCZOS),
+         f'android/app/src/main/res/mipmap-{density}/ic_launcher.png')
+macos = root / 'macos/Runner/Assets.xcassets/AppIcon.appiconset/Contents.json'
+if macos.exists():
+    for entry in json.loads(macos.read_text())['images']:
+        if 'filename' in entry:
+            size = round(float(entry['size'].split('x')[0]) * float(entry['scale'].rstrip('x')))
+            save(icon.resize((size, size), Image.Resampling.LANCZOS),
+                 'macos/Runner/Assets.xcassets/AppIcon.appiconset/' + entry['filename'])
 font = ImageFont.truetype(str(options.font), 76)
 for name, resource in [('红果鉴', 'tv_banner'), ('真果鉴', 'tv_banner_all_sources')]:
     banner = Image.new('RGB', (640, 360), '#101114')

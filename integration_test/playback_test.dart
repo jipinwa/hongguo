@@ -4,8 +4,6 @@ import 'dart:io';
 import 'package:duanju_app/core_bridge.dart';
 import 'package:duanju_app/downloads_screen.dart';
 import 'package:duanju_app/local_store.dart';
-import 'package:duanju_app/media_library.dart';
-import 'package:duanju_app/media_pipeline.dart';
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import 'package:duanju_app/main.dart';
 import 'package:duanju_app/models.dart';
@@ -569,32 +567,6 @@ void main() {
           'return to downloads',
         );
         await binding.takeScreenshot('android-offline-downloads');
-        final library = MediaLibrary(repository, store);
-        try {
-          final merged = await library.merge(jobs);
-          expect(merged.videoTranscodes, 0);
-          final probe = await FFmpegExecutor().probe(library.fileFor(merged));
-          verifyMediaDuration(probe, 60);
-          await library.exportJobs(jobs);
-          expect(library.items.where((item) => !item.merged), hasLength(3));
-          for (final item in library.items) {
-            final inspected = await FFmpegExecutor().probe(
-              library.fileFor(item),
-            );
-            verifyMediaDuration(inspected, item.merged ? 60 : 20);
-          }
-          binding.reportData ??= {};
-          binding.reportData!['localMedia'] = {
-            'mergeDuration': probe.duration,
-            'videoTranscodes': merged.videoTranscodes,
-            'exports': 3,
-          };
-          for (final item in library.items.toList()) {
-            await library.remove(item);
-          }
-        } finally {
-          library.dispose();
-        }
         final status = await fixtureControl('status');
         expect(
           status['deniedRequests'],
@@ -645,7 +617,6 @@ void main() {
       final repository = DownloadFixtureRepository();
       await repository.initialize();
       final preferences = await SharedPreferences.getInstance();
-      await preferences.setBool('autoExport', false);
       final store = LocalStore(preferences);
       const drama = Drama(
         id: 'hongguo:700009',

@@ -145,6 +145,15 @@ class MainActivity : FlutterActivity() {
                         }
                         "playbackPower" -> result.success(runCatching { playbackPower() }.getOrNull())
                         "systemProxy" -> {
+                            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N) {
+                                result.success(mapOf(
+                                    "http" to "",
+                                    "https" to "",
+                                    "bypass" to emptyList<String>(),
+                                    "pac" to false
+                                ))
+                                return@setMethodCallHandler
+                            }
                             val connection = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
                             val proxy = connection.defaultProxy
                             val host = proxy?.host.orEmpty()

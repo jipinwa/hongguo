@@ -15,7 +15,6 @@ import 'local_store.dart';
 import 'app_build.dart';
 import 'source_status.dart';
 import 'ranking_models.dart';
-import 'cover_decoder.dart';
 import 'catalog_updates.dart';
 import 'download_collections.dart';
 import 'resource_settings.dart';
@@ -198,7 +197,6 @@ abstract class AppRepository {
 }
 
 class NativeRepository extends AppRepository {
-  static final _coverDecoder = CoverDecoder();
   NativeRepository({this.background = false});
   final bool background;
   LocalStore? access;
@@ -707,17 +705,18 @@ class NativeRepository extends AppRepository {
       'drama': drama.toJson(),
       'force': force,
     });
-    final file = result['path'] as String? ?? '';
+    var file = result['path'] as String? ?? '';
+    if (result['heic'] == true) {
+      final prepared = await _call({
+        'action': 'prepareCover',
+        'drama': drama.toJson(),
+      });
+      if (prepared['heic'] != true) file = prepared['path'] as String? ?? '';
+    }
     if (file.isEmpty) throw AppFailure('海报暂不可用');
-    if (result['heic'] != true) return file;
-    final converted = await _coverDecoder.convert(
-      file,
-      () => _call({'action': 'prepareCover', 'drama': drama.toJson()}),
-      force: force,
-    );
     _authorize(drama.source);
     if (epoch != access?.profileEpoch) throw AppFailure('用户已切换，请重新操作');
-    return converted;
+    return file;
   }
 
   @override

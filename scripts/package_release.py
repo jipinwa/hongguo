@@ -9,7 +9,7 @@ from app_build import BuildVariant, add_variant_argument
 
 root = Path(__file__).resolve().parents[1]
 parser = argparse.ArgumentParser()
-parser.add_argument('--platform', choices=['android', 'windows'], required=True)
+parser.add_argument('--platform', choices=['android'], required=True)
 parser.add_argument('--abi', action='append', choices=['arm64-v8a', 'armeabi-v7a', 'x86_64'])
 add_variant_argument(parser)
 options = parser.parse_args()
@@ -30,30 +30,13 @@ if options.platform == 'android':
         with zipfile.ZipFile(source) as archive:
             names = set(archive.namelist())
             required = [f'lib/{abi}/{library}' for library in
-                        ['libduanju_core.so', 'libflutter.so', 'libapp.so', 'libmpv.so', 'libffmpegkit.so']]
+                        ['libduanju_core.so', 'libflutter.so', 'libapp.so', 'libmpv.so']]
             missing = set(required) - names
             if missing:
                 raise SystemExit('APK 缺少原生库：' + ', '.join(sorted(missing)))
         target = output / f'{variant.slug}-{version}-{abi}.apk'
         shutil.copy2(source, target)
         artifacts.append(target)
-else:
-    bundle = root / 'build' / 'windows' / 'x64' / 'runner' / 'Release'
-    required = ['zhenguojian.exe', 'duanju_core.dll', 'flutter_windows.dll', 'libffmpegkit.dll',
-                'libmpv-2.dll', 'msvcp140.dll', 'vcruntime140.dll',
-                'data/icudtl.dat', 'data/app.so']
-    missing = [name for name in required if not (bundle / name).is_file()]
-    if missing:
-        raise SystemExit('Windows 安装包缺少文件：' + ', '.join(missing))
-    target = output / f'{variant.slug}-{version}-windows-x64.zip'
-    with zipfile.ZipFile(target, 'w', zipfile.ZIP_DEFLATED) as archive:
-        for source in sorted(bundle.rglob('*')):
-            if source.is_file():
-                relative = source.relative_to(bundle).as_posix()
-                if relative == 'zhenguojian.exe':
-                    relative = variant.slug + '.exe'
-                archive.write(source, relative)
-    artifacts.append(target)
 
 checksums = []
 for artifact in sorted(output.glob(f'*-{version}-*')):
