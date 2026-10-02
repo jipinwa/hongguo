@@ -4,9 +4,11 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import 'app_build.dart';
+
 export 'app_build.dart';
 
-const appVersion = '0.2.51';
+const appVersion = '0.2.58';
 
 ThemeData televisionTheme(ThemeData theme) {
   final colors = theme.colorScheme;
