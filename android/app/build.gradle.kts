@@ -75,6 +75,16 @@ kotlin {
 
 flutter { source = "../.." }
 
+afterEvaluate {
+    android.defaultConfig.minSdk = 23
+}
+
+gradle.projectsEvaluated {
+    project.extensions.configure<com.android.build.api.dsl.ApplicationExtension> {
+        defaultConfig.minSdk = 23
+    }
+}
+
 tasks.withType<JavaCompile>().configureEach {
     if (name.contains("Release")) {
         doFirst {
