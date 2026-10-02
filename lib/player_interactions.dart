@@ -40,7 +40,11 @@ class PlayerInteractions extends ChangeNotifier {
   Offset? _lastPosition;
   Duration _started = Duration.zero;
   double _swipeThreshold = 70;
+  double _paneWidth = 0;
   bool _swipeEnabled = false;
+  String? _dragAxis;
+  Duration? _dragSeekBase;
+  Duration? _dragSeekTarget;
   bool _moved = false;
   bool _held = false;
   bool _boosting = false;
@@ -53,6 +57,8 @@ class PlayerInteractions extends ChangeNotifier {
 
   String get feedback => _feedback;
   bool get boosting => _boosting;
+  bool get dragSeeking => _dragSeekTarget != null;
+  Duration? get dragSeekTarget => _dragSeekTarget;
   bool get suppressTap => DateTime.now().isBefore(_ignoreTapUntil);
   Future<void> get pendingRates => _rates;
 
@@ -126,6 +132,9 @@ class PlayerInteractions extends ChangeNotifier {
     _pointer = null;
     _origin = null;
     _lastPosition = null;
+    _dragAxis = null;
+    _dragSeekBase = null;
+    _dragSeekTarget = null;
     _endHold(silent: true);
     hint('');
   }
@@ -133,6 +142,7 @@ class PlayerInteractions extends ChangeNotifier {
   void pointerDown(
     PointerDownEvent event, {
     required bool swipeEnabled,
+    required double width,
     required double height,
   }) {
     _pointers.add(event.pointer);
@@ -144,8 +154,12 @@ class PlayerInteractions extends ChangeNotifier {
     _pointer = event.pointer;
     _origin = _lastPosition = event.localPosition;
     _started = event.timeStamp;
+    _paneWidth = width;
     _swipeEnabled = swipeEnabled && event.kind == PointerDeviceKind.touch;
     _swipeThreshold = math.max(56, math.min(100, height * .1));
+    _dragAxis = null;
+    _dragSeekBase = null;
+    _dragSeekTarget = null;
     _moved = _held = false;
     _beginHold();
   }
@@ -157,6 +171,40 @@ class PlayerInteractions extends ChangeNotifier {
       _moved = true;
       _endHold();
     }
+    _updateDragSeek();
+  }
+
+  void _updateDragSeek() {
+    if (!_swipeEnabled ||
+        _origin == null ||
+        _lastPosition == null ||
+        _cancelUntilRelease) {
+      return;
+    }
+    final delta = _lastPosition! - _origin!;
+    _dragAxis ??= delta.distance < 24
+        ? null
+        : delta.dx.abs() >= delta.dy.abs()
+        ? 'x'
+        : 'y';
+    if (_dragAxis != 'x') return;
+    final duration = player.state.duration;
+    if (duration <= Duration.zero || _paneWidth <= 0) return;
+    _dragSeekBase ??= player.state.position;
+    final offset = delta.dx / _paneWidth * duration.inMilliseconds;
+    final target = Duration(
+      milliseconds: (_dragSeekBase!.inMilliseconds + offset)
+          .round()
+          .clamp(0, duration.inMilliseconds),
+    );
+    _dragSeekTarget = target;
+    final seconds =
+        ((target.inMilliseconds - _dragSeekBase!.inMilliseconds) / 1000)
+            .round();
+    hint(
+      '${seconds < 0 ? '后退' : '快进'} ${seconds.abs()} 秒 · ${formatPosition(target.inMilliseconds / 1000)}',
+      persistent: true,
+    );
   }
 
   void pointerUp(PointerUpEvent event) {
@@ -167,20 +215,35 @@ class PlayerInteractions extends ChangeNotifier {
       return;
     }
     if (_pointer != event.pointer || _origin == null) return;
+    final dragSeek = _dragSeekTarget;
     final delta = (_lastPosition ?? event.localPosition) - _origin!;
     final swipe =
+        dragSeek == null &&
         _swipeEnabled &&
         !_held &&
         _moved &&
         delta.dy.abs() >= _swipeThreshold &&
         delta.dy.abs() > delta.dx.abs() * 1.5 &&
         event.timeStamp - _started < const Duration(milliseconds: 1500);
-    if (_moved || _held) {
+    if (_moved || _held || dragSeek != null) {
       _ignoreTapUntil = DateTime.now().add(const Duration(milliseconds: 600));
     }
     _pointer = null;
     _origin = null;
+    _lastPosition = null;
+    _dragAxis = null;
+    _dragSeekBase = null;
+    _dragSeekTarget = null;
     _endHold();
+    if (dragSeek != null) {
+      if (available()) {
+        unawaited((onSeek ?? player.seek)(dragSeek));
+        hint('已跳到 ${formatPosition(dragSeek.inMilliseconds / 1000)}');
+      } else {
+        hint('');
+      }
+      return;
+    }
     if (swipe && available()) hint(onEpisode(delta.dy < 0 ? 1 : -1));
   }
 

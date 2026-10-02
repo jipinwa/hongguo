@@ -38,6 +38,8 @@ class PlayerControls extends StatefulWidget {
     this.onRetryDanmaku,
     this.onPush,
     this.onPictureInPicture,
+    this.onSynopsis,
+    this.onDownload,
     this.enhancement,
   });
 
@@ -68,6 +70,8 @@ class PlayerControls extends StatefulWidget {
   final Future<void> Function()? onRetryDanmaku;
   final Future<void> Function()? onPush;
   final Future<void> Function()? onPictureInPicture;
+  final Future<void> Function()? onSynopsis;
+  final Future<void> Function()? onDownload;
   final VideoEnhancementController? enhancement;
 
   @override
@@ -154,7 +158,9 @@ class _PlayerControlsState extends State<PlayerControls> {
   }
 
   void _interactionChanged() {
-    if (mounted && widget.interactions.feedback.isNotEmpty) _show();
+    if (!mounted) return;
+    if (widget.interactions.feedback.isNotEmpty) _show();
+    setState(() {});
   }
 
   void _scheduleHide() {
@@ -162,7 +168,8 @@ class _PlayerControlsState extends State<PlayerControls> {
     if (!widget.enabled ||
         widget.panelOpen ||
         !widget.player.state.playing ||
-        _seekValue != null) {
+        _seekValue != null ||
+        widget.interactions.dragSeeking) {
       return;
     }
     _hideTimer = Timer(const Duration(seconds: 4), () {
@@ -172,7 +179,8 @@ class _PlayerControlsState extends State<PlayerControls> {
           widget.player.state.playing &&
           !widget.player.state.buffering &&
           !widget.interactions.boosting &&
-          _seekValue == null) {
+          _seekValue == null &&
+          !widget.interactions.dragSeeking) {
         setState(() => _visible = false);
       }
     });
@@ -219,10 +227,18 @@ class _PlayerControlsState extends State<PlayerControls> {
   Widget build(BuildContext context) {
     final state = widget.player.state;
     final duration = state.duration.inMilliseconds / 1000;
-    final position = state.position.inMilliseconds / 1000;
+    final dragTarget = widget.interactions.dragSeekTarget;
+    final dragSeeking = dragTarget != null;
+    final position = dragSeeking
+        ? dragTarget!.inMilliseconds / 1000
+        : state.position.inMilliseconds / 1000;
     final buffered = state.buffer.inMilliseconds / 1000;
     final visible =
-        _visible || !state.playing || state.buffering || widget.panelOpen;
+        _visible ||
+        !state.playing ||
+        state.buffering ||
+        widget.panelOpen ||
+        dragSeeking;
     return MouseRegion(
       onHover: (_) => _show(),
       cursor: visible ? SystemMouseCursors.basic : SystemMouseCursors.none,
@@ -238,6 +254,7 @@ class _PlayerControlsState extends State<PlayerControls> {
                 widget.interactions.pointerDown(
                   event,
                   swipeEnabled: widget.swipeEnabled,
+                  width: constraints.maxWidth,
                   height: constraints.maxHeight,
                 );
               },
@@ -351,7 +368,15 @@ class _PlayerControlsState extends State<PlayerControls> {
                 ),
               )
             else
-              const Spacer(),
+              Expanded(
+                child: Text(
+                  widget.title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 13),
+                ),
+              ),
             if (compact)
               _overlayIconButton(
                 tooltip: '旋转与全屏',
@@ -818,6 +843,26 @@ class _PlayerControlsState extends State<PlayerControls> {
   Widget _mobileControlRow({required bool fullscreen}) {
     final tools = [
       _toolText(
+        key: const ValueKey('player-episodes'),
+        tooltip: '选集',
+        label: '选集',
+        onPressed: widget.enabled ? () => _panel(widget.onEpisodes) : null,
+      ),
+      if (!fullscreen && widget.onSynopsis != null)
+        _toolText(
+          key: const ValueKey('player-synopsis'),
+          tooltip: '简介',
+          label: '简介',
+          onPressed: widget.enabled ? () => _panel(widget.onSynopsis!) : null,
+        ),
+      if (!fullscreen && widget.onDownload != null)
+        _toolText(
+          key: const ValueKey('player-download'),
+          tooltip: '下载',
+          label: '下载',
+          onPressed: widget.enabled ? () => _panel(widget.onDownload!) : null,
+        ),
+      _toolText(
         key: const ValueKey('player-speed'),
         tooltip: '倍速',
         label: '${widget.speed}x',
@@ -833,13 +878,6 @@ class _PlayerControlsState extends State<PlayerControls> {
       ),
       if (widget.onPush != null)
         _lanPushTool(const ValueKey('fullscreen-lan-push')),
-      if (fullscreen)
-        _toolIcon(
-          key: const ValueKey('player-episodes'),
-          tooltip: '选集',
-          icon: Icons.grid_view_rounded,
-          onPressed: widget.enabled ? () => _panel(widget.onEpisodes) : null,
-        ),
       if (widget.onPictureInPicture != null)
         _toolIcon(
           key: const ValueKey('player-picture-in-picture'),

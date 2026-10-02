@@ -104,7 +104,6 @@ class _PlayerScreenState extends State<PlayerScreen>
   bool _fullscreen = false;
   bool _automaticFullscreenSuppressed = false;
   bool _panelOpen = false;
-  int _mobileTab = 0;
   bool _autoAdvance = true;
   bool? _systemFullscreen;
   Orientation? _lastOrientation;
@@ -1518,7 +1517,8 @@ class _PlayerScreenState extends State<PlayerScreen>
           canRequestFocus: !_television,
           skipTraversal: _television,
           child: Scaffold(
-            backgroundColor: fullscreen || pictureInPicture
+            backgroundColor:
+                fullscreen || pictureInPicture || _mobile
                 ? Colors.black
                 : theme.scaffoldBackgroundColor,
             appBar: pictureInPicture || fullscreen || _mobile
@@ -1568,18 +1568,7 @@ class _PlayerScreenState extends State<PlayerScreen>
                           );
                         }
                         if (_mobile) {
-                          final height = (constraints.maxWidth / _aspectRatio)
-                              .clamp(0.0, constraints.maxHeight * .56);
-                          return Column(
-                            children: [
-                              SizedBox(
-                                height: height,
-                                width: double.infinity,
-                                child: _videoPane(context),
-                              ),
-                              Expanded(child: _mobilePlaybackPanel()),
-                            ],
-                          );
+                          return _videoPane(context);
                         }
                         final height = (constraints.maxWidth / _aspectRatio)
                             .clamp(0.0, constraints.maxHeight * .64);
@@ -1661,6 +1650,8 @@ class _PlayerScreenState extends State<PlayerScreen>
             onPictureInPicture: _canUsePictureInPicture
                 ? _enterPictureInPicture
                 : null,
+            onSynopsis: _mobile ? _openSynopsis : null,
+            onDownload: _mobile ? _openDownloadSheet : null,
             onPrevious: _index > 0 ? () => _play(_index - 1) : null,
             onNext: _index + 1 < widget.detail.episodes.length
                 ? () => _play(_index + 1)
@@ -1800,79 +1791,7 @@ class _PlayerScreenState extends State<PlayerScreen>
     );
   }
 
-  Widget _mobilePlaybackPanel() {
-    final colors = Theme.of(context).colorScheme;
-    return ColoredBox(
-      color: Theme.of(context).scaffoldBackgroundColor,
-      child: SafeArea(
-        top: false,
-        child: Column(
-          children: [
-            _mobileTabs(colors),
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(8, 6, 8, 8),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: _mobileTab == 0
-                      ? _episodePanel(compact: true)
-                      : _mobileTab == 1
-                      ? _mobileSynopsis()
-                      : _mobileDownload(),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _mobileTabs(ColorScheme colors) => Padding(
-    padding: const EdgeInsets.fromLTRB(8, 2, 8, 0),
-    child: SizedBox(
-      height: 42,
-      child: Row(
-        children: [
-          _mobileTabButton(0, '选集'),
-          _mobileTabButton(1, '简介'),
-          _mobileTabButton(2, '下载'),
-        ],
-      ),
-    ),
-  );
-
-  Widget _mobileTabButton(int value, String label) {
-    final selected = _mobileTab == value;
-    final colors = Theme.of(context).colorScheme;
-    return Expanded(
-      child: InkWell(
-        onTap: () => setState(() => _mobileTab = value),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 120),
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            border: Border(
-              bottom: BorderSide(
-                color: selected ? colors.primary : Colors.transparent,
-                width: 2,
-              ),
-            ),
-          ),
-          child: Text(
-            label,
-            style: TextStyle(
-              color: selected ? colors.onSurface : colors.onSurfaceVariant,
-              fontSize: 13,
-              fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _mobileSynopsis() {
+  Widget _mobileSynopsis(BuildContext context) {
     final drama = widget.detail.drama;
     final colors = Theme.of(context).colorScheme;
     final meta = [
@@ -1934,7 +1853,7 @@ class _PlayerScreenState extends State<PlayerScreen>
             ],
           ),
           const SizedBox(height: 10),
-          _mobileFollowControl(drama),
+          _mobileFollowControl(context, drama),
           if (drama.tags.isNotEmpty) ...[
             const SizedBox(height: 10),
             Wrap(
@@ -1957,7 +1876,7 @@ class _PlayerScreenState extends State<PlayerScreen>
     );
   }
 
-  Widget _mobileFollowControl(Drama drama) {
+  Widget _mobileFollowControl(BuildContext context, Drama drama) {
     final state = widget.store.following(drama.id);
     return PopupMenuButton<String>(
       key: const ValueKey('player-follow-status'),
@@ -2018,7 +1937,7 @@ class _PlayerScreenState extends State<PlayerScreen>
     );
   }
 
-  Widget _mobileDownload() {
+  Widget _mobileDownload(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
     if (!widget.repository.supportsDownloads || !widget.store.canDownload) {
       return ColoredBox(
@@ -2038,13 +1957,75 @@ class _PlayerScreenState extends State<PlayerScreen>
     );
   }
 
-  Widget _episodePanel({bool compact = false}) => ColoredBox(
+  Future<void> _openSynopsis() => _openMobileSheet(_mobileSynopsis);
+
+  Future<void> _openDownloadSheet() => _openMobileSheet(_mobileDownload);
+
+  Future<void> _openMobileSheet(
+    Widget Function(BuildContext context) builder,
+  ) async {
+    if (_panelOpen || _closed) return;
+    _interactions.cancel();
+    setState(() => _panelOpen = true);
+    try {
+      await showModalBottomSheet<void>(
+        context: context,
+        useSafeArea: true,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        barrierColor: Colors.black54,
+        builder: (sheetContext) => Theme(
+          data: AppTheme.dark,
+          child: Builder(
+            builder: (themedContext) => Container(
+              height: MediaQuery.sizeOf(sheetContext).height * .72,
+              decoration: BoxDecoration(
+                color: Theme.of(themedContext).colorScheme.surface,
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(18),
+                ),
+              ),
+              child: ClipRRect(
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(18),
+                ),
+                child: Column(
+                  children: [
+                    SizedBox(
+                      height: 14,
+                      child: Center(
+                        child: Container(
+                          width: 38,
+                          height: 4,
+                          decoration: BoxDecoration(
+                            color: Colors.white24,
+                            borderRadius: BorderRadius.circular(2),
+                          ),
+                        ),
+                      ),
+                    ),
+                    Expanded(child: builder(themedContext)),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+    } finally {
+      if (mounted && !_closed) {
+        setState(() => _panelOpen = false);
+        _playerFocus.requestFocus();
+      }
+    }
+  }
+
+  Widget _episodePanel() => ColoredBox(
     color: Theme.of(context).colorScheme.surface,
     child: PlayerEpisodeGrid(
       episodes: widget.detail.episodes,
       currentIndex: _index,
-      compact: compact,
-      title: compact ? '剧集' : '选集',
+      title: '选集',
       onSelected: (index) => _play(index),
     ),
   );

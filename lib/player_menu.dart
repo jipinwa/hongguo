@@ -306,7 +306,7 @@ class _PlayerMenuState extends State<PlayerMenu> {
           const SizedBox(height: 20),
           Text(
             widget.mobile
-                ? '上下滑切集；长按画面临时 3 倍速，松开恢复。竖屏轻点暂停，横屏轻点显示控制；双击播放或暂停。'
+                ? '上下滑切集，左右滑快进后退；长按画面临时 3 倍速，松开恢复。竖屏轻点暂停，横屏轻点显示控制；双击播放或暂停。'
                 : '空格：播放 / 暂停\n左右键：后退 / 快进 5 秒\n长按右键或画面：临时 3 倍速\n上下键：音量 ±5%，M：静音\nF、F11、Ctrl+F：全屏\nEsc：先关闭菜单，再退出全屏',
             style: helperStyle.copyWith(height: 1.6),
           ),
