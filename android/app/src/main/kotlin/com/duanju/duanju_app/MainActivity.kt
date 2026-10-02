@@ -17,11 +17,11 @@ import android.content.pm.PackageManager
 import android.content.res.Configuration
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.ImageFormat
 import android.graphics.Matrix
 import android.graphics.Rect
 import android.graphics.YuvImage
 import android.media.Image
-import android.media.ImageFormat
 import android.media.MediaCodec
 import android.media.MediaFormat
 import android.net.ConnectivityManager

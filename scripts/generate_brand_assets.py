@@ -10,10 +10,13 @@ parser.add_argument('--output', type=Path, default=root)
 parser.add_argument('--font', type=Path, default=Path('C:/Windows/Fonts/msyh.ttc'))
 options = parser.parse_args()
 output = options.output
-icon = Image.new('RGB', (1024, 1024), '#101114')
+icon = Image.new('RGB', (1024, 1024), '#FF765F')
 draw = ImageDraw.Draw(icon)
-draw.rounded_rectangle((110, 110, 914, 914), radius=236, fill='#FF765F')
-draw.polygon([(418, 303), (418, 721), (734, 512)], fill='white')
+draw.polygon([(381, 230), (381, 794), (808, 512)], fill='white')
+badge = Image.new('RGB', (1024, 1024), '#101114')
+badge_draw = ImageDraw.Draw(badge)
+badge_draw.rounded_rectangle((110, 110, 914, 914), radius=236, fill='#FF765F')
+badge_draw.polygon([(418, 303), (418, 721), (734, 512)], fill='white')
 
 def save(image, name):
     destination = output / name
@@ -33,7 +36,7 @@ if macos.exists():
 font = ImageFont.truetype(str(options.font), 76)
 for name, resource in [('红果鉴', 'tv_banner'), ('真果鉴', 'tv_banner_all_sources')]:
     banner = Image.new('RGB', (640, 360), '#101114')
-    banner.paste(icon.resize((180, 180), Image.Resampling.LANCZOS), (44, 90))
+    banner.paste(badge.resize((180, 180), Image.Resampling.LANCZOS), (44, 90))
     draw = ImageDraw.Draw(banner)
     draw.text((255, 128), name, font=font, fill='white')
     save(banner, f'android/app/src/main/res/drawable-xhdpi/{resource}.png')
