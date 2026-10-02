@@ -3,7 +3,7 @@
 Flutter 独立短剧应用，支持 Android 手机和 Android TV。站源请求、解析、下载和播放均在设备上完成，不依赖旧项目、远程自建服务或第三方中转。原生核心为 Go（FFI 接入），播放器基于 media_kit / libmpv。
 修改加入的对安卓6的支持
 
-当前源码版本：**0.2.67+82（未验证开发快照）**。按 2026-09-21 的约定，功能优先、暂停集中测试与回归；未经设备验收的能力均标注"待验证"，不作为已通过验收的版本。
+当前源码版本：**0.2.68+83（未验证开发快照）**。按 2026-09-21 的约定，功能优先、暂停集中测试与回归；未经设备验收的能力均标注"待验证"，不作为已通过验收的版本。
 
 ## 版本与编译选项
 
@@ -65,11 +65,13 @@ Flutter 独立短剧应用，支持 Android 手机和 Android TV。站源请求�
 
 | 平台 | 状态 |
 | --- | --- |
-| Android 6.0+ 手机 | 源码 `0.2.67+82`；构建脚本与 Actions 产物可用（CI 仅编 arm64-v8a），真实安装与运行待验收；浏览、搜索、在线播放支持安卓 6（minSdk 23，Flutter 3.32.8）。本地媒体处理改用 mobile-ffmpeg（yangfeng1994/FFmpeg-Android v2.0.1，arm64 so 实测 minApi 21，jitpack 引入，按需加载不影响启动）：HEIC 海报转码、分集合并、Emby 导出、本地媒体页全部恢复；无 FFprobe，媒体探测由 ffmpeg 日志解析提供；安装图标为满幅 PNG 品牌图，无黑边；离线播放走 Go 核心按分集播放 |
+| Android 6.0+ 手机 | 源码 `0.2.68+83`；构建脚本与 Actions 产物可用（CI 仅编 arm64-v8a），真实安装与运行待验收；浏览、搜索、在线播放支持安卓 6（minSdk 23，Flutter 3.32.8）。本地媒体处理改用 mobile-ffmpeg（yangfeng1994/FFmpeg-Android v2.0.1，arm64 so 实测 minApi 21，jitpack 引入，按需加载不影响启动）：HEIC 海报转码、分集合并、Emby 导出、本地媒体页全部恢复；无 FFprobe，媒体探测由 ffmpeg 日志解析提供；安装图标为满幅 PNG 品牌图，无黑边；离线播放走 Go 核心按分集播放 |
 | macOS 12+ | 按 2026-10-02 要求停止编译；平台源码保留，不提供安装包与 Actions 产物 |
-| Android TV | 与手机共用 Android 源码；遥控与电视布局待实机验收 |
+| Android TV | 与手机共用 Android 源码；0.2.68 起首页 / 收藏 / 推荐网格卡片密度提升（同屏可见约 3 行），遥控焦点高亮加缩放与光晕；待实机验收 |
 
 `INSTALL_FAILED_NO_MATCHING_ABIS` 表示 APK 与设备架构不匹配，请更换对应架构安装包。Android APK 默认压缩原生 `.so` 库，安装时由系统解压。
+
+已知模拟器问题：MuMu 等 houdini 转译环境下快速进出播放页时，引擎销毁窗口期可能触发 `FinalizerDaemon` 的 SIGSEGV（media_kit 已知问题类别）；0.2.68 已为播放器释放链加 3 秒超时兜底，真机 TV 无 houdini 转译，预计不受影响。
 
 ## GitHub Actions
 

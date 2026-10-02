@@ -347,20 +347,20 @@ class DramaTile extends StatelessWidget {
   final VoidCallback? onLongPress;
 
   static double titleHeight(BuildContext context) =>
-      MediaQuery.textScalerOf(
-        context,
-      ).scale(AppLayout.isTelevision(context) ? 17 : 14) *
-      2.6;
+      MediaQuery.textScalerOf(context).scale(15) * 2.6;
 
   static double subtitleHeight(BuildContext context) =>
-      MediaQuery.textScalerOf(
-        context,
-      ).scale(AppLayout.isTelevision(context) ? 14 : 12) *
-      1.3;
+      MediaQuery.textScalerOf(context).scale(12) * 1.3;
 
   static double extentFor(BuildContext context, double width) =>
       (width * 1.5 + 13 + titleHeight(context) + subtitleHeight(context))
           .ceilToDouble();
+
+  static (int, double) televisionGridMetrics(double width) {
+    final columns = ((width - 36) / 110).floor().clamp(1, 10);
+    final tileWidth = (width - 36 - (columns - 1) * 14) / columns;
+    return (columns, tileWidth);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -436,7 +436,7 @@ class DramaTile extends StatelessWidget {
               style: TextStyle(
                 fontWeight: FontWeight.w600,
                 height: 1.3,
-                fontSize: television ? 17 : 14,
+                fontSize: 15,
               ),
             ),
           ),
@@ -451,7 +451,7 @@ class DramaTile extends StatelessWidget {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
-                fontSize: television ? 14 : 12,
+                fontSize: 12,
                 height: 1.3,
                 color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),

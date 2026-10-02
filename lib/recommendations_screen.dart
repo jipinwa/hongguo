@@ -183,12 +183,8 @@ class _RecommendationsScreenState extends State<RecommendationsScreen> {
               : LayoutBuilder(
                   builder: (context, constraints) {
                     if (AppLayout.isTelevision(context)) {
-                      final columns = ((constraints.maxWidth - 36) / 150)
-                          .floor()
-                          .clamp(1, 8);
-                      final tileWidth =
-                          (constraints.maxWidth - 36 - (columns - 1) * 14) /
-                          columns;
+                      final (columns, tileWidth) =
+                          DramaTile.televisionGridMetrics(constraints.maxWidth);
                       return RemoteGrid(
                         key: widget.gridKey,
                         itemKeys: _items.map((item) => item.id).toList(),

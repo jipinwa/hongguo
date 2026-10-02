@@ -1464,8 +1464,7 @@ class _HomeScreenState extends State<HomeScreen> {
     ScrollController? controller,
     Widget? footer,
   }) {
-    final columns = ((width - 36) / 150).floor().clamp(1, 8);
-    final tileWidth = (width - 36 - (columns - 1) * 14) / columns;
+    final (columns, tileWidth) = DramaTile.televisionGridMetrics(width);
     return RemoteGrid(
       key: _gridKey,
       itemKeys: items.map((item) => item.id).toList(),

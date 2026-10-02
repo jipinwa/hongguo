@@ -99,30 +99,46 @@ class _RemoteTargetState extends State<RemoteTarget> {
         child: GestureDetector(
           behavior: HitTestBehavior.opaque,
           onTap: widget.onPressed,
-          child: AnimatedContainer(
+          child: AnimatedScale(
+            scale: _focused ? 1.05 : 1.0,
             duration: const Duration(milliseconds: 120),
-            padding: widget.padding,
-            decoration: BoxDecoration(
-              color: widget.selected
-                  ? Theme.of(context).colorScheme.primaryContainer
-                  : _focused && widget.outlined
-                  ? Theme.of(context).colorScheme.surfaceContainerHighest
-                  : _focused
-                  ? Theme.of(context).colorScheme.primaryContainer
-                  : Colors.transparent,
-              borderRadius: BorderRadius.circular(widget.radius),
-              border: Border.all(
-                color: _focused
-                    ? Theme.of(context).colorScheme.primary
-                    : widget.selected
-                    ? Theme.of(context).colorScheme.primary
-                    : widget.outlined
-                    ? Theme.of(context).colorScheme.outlineVariant
+            curve: Curves.easeOut,
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 120),
+              padding: widget.padding,
+              decoration: BoxDecoration(
+                color: widget.selected
+                    ? Theme.of(context).colorScheme.primaryContainer
+                    : _focused && widget.outlined
+                    ? Theme.of(context).colorScheme.surfaceContainerHighest
+                    : _focused
+                    ? Theme.of(context).colorScheme.primaryContainer
                     : Colors.transparent,
-                width: widget.borderWidth,
+                borderRadius: BorderRadius.circular(widget.radius),
+                border: Border.all(
+                  color: _focused
+                      ? Theme.of(context).colorScheme.primary
+                      : widget.selected
+                      ? Theme.of(context).colorScheme.primary
+                      : widget.outlined
+                      ? Theme.of(context).colorScheme.outlineVariant
+                      : Colors.transparent,
+                  width: widget.borderWidth,
+                ),
+                boxShadow: _focused
+                    ? [
+                        BoxShadow(
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.primary.withValues(alpha: .5),
+                          blurRadius: 16,
+                          spreadRadius: 1,
+                        ),
+                      ]
+                    : null,
               ),
+              child: ExcludeFocus(child: widget.child),
             ),
-            child: ExcludeFocus(child: widget.child),
           ),
         ),
       ),

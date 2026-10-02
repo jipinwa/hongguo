@@ -236,12 +236,9 @@ class _SavedLibraryState extends State<SavedLibrary> {
       return LayoutBuilder(
         builder: (context, constraints) {
           if (AppLayout.isTelevision(context)) {
-            final columns = ((constraints.maxWidth - 36) / 150).floor().clamp(
-              1,
-              8,
+            final (columns, tileWidth) = DramaTile.televisionGridMetrics(
+              constraints.maxWidth,
             );
-            final tileWidth =
-                (constraints.maxWidth - 36 - (columns - 1) * 14) / columns;
             return Column(
               children: [
                 ConstrainedBox(
